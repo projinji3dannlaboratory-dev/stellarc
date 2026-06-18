@@ -231,7 +231,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
 <div class="hud" id="legend">
   ドラッグ=旋回 ／ ホイール・ピンチ=接近<br>
   星をタップ=軌道投入 ／ 業種名をタップ=星雲へ<br>
-  <span id="legend-mode">大きさ = 時価総額 ／ 明るさ = 優良企業度</span>
+  <span id="legend-mode">大きさ = 時価総額（面積が比例・最大=100）／ 明るさ = 優良企業度（1〜100）</span>
 </div>
 
 <div id="comm-log" aria-live="polite"></div>
@@ -258,7 +258,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
     </div>
     <div class="sec">
       <div class="sec-t">SPECTRUM — 優良度 / 知名度 乖離</div>
-      <div class="kv"><div class="k">優良企業度（成長率・利益率・働きやすさ・年収の独自スコア）</div><div class="v" id="p-mass"></div><div class="meter"><i id="m-mass"></i></div></div>
+      <div class="kv"><div class="k">優良企業度（成長率・利益率・働きやすさ・年収の独自スコア／最低1〜最高100）</div><div class="v" id="p-mass"></div><div class="meter"><i id="m-mass"></i></div></div>
       <div class="kv" style="margin-top:10px"><div class="k">アルベド（知名度）</div><div class="v" id="p-albedo"></div><div class="meter"><i id="m-albedo" style="background:var(--txt-dim)"></i></div></div>
       <div id="p-dg-note" style="font-size:11px;color:#c9a7ff;margin-top:10px;line-height:1.7;display:none">
         ◆ 暗黒巨星認定 — 優良企業度は高いが可視光では暗い。知名度フィルターの外側にある優良天体。</div>
@@ -503,6 +503,17 @@ const USING_REAL = Array.isArray(window.STELLARC_DATA) && window.STELLARC_DATA.l
 if(USING_REAL) buildFromReal(window.STELLARC_DATA); else buildDemo();
 const TOTAL = STARS.length;
 const DARK_GIANTS = STARS.filter(s=>s.dg);
+
+// --- 正規化: 大きさ=時価総額(最大→100に比例) / 輝き=優良ポイント(最低→1・最高→100に比例) ---
+const MAXCAP = STARS.reduce((m,s)=>Math.max(m, s.mktcap||0), 0) || 1;
+let _mmin=Infinity,_mmax=-Infinity;
+STARS.forEach(s=>{ if(s.mass<_mmin)_mmin=s.mass; if(s.mass>_mmax)_mmax=s.mass; });
+const MASS_MIN=_mmin, MASS_SPAN=Math.max(1,_mmax-_mmin);
+STARS.forEach(s=>{
+  s.sizeScore = s.mktcap ? s.mktcap/MAXCAP*100 : null;   // 0–100（最大企業=100に比例）
+  s.qNorm  = (s.mass-MASS_MIN)/MASS_SPAN;                 // 0–1
+  s.qScore = Math.round(1 + s.qNorm*99);                  // 1–100（最低=1・最高=100）
+});
 { const b=document.getElementById('demo-badge');
   if(USING_REAL){ b.textContent='LIVE — EDINET'; b.style.color='var(--teal)'; b.style.borderColor='rgba(125,211,200,.45)'; }
   const c=document.getElementById('st-count'); if(c) c.textContent=TOTAL.toLocaleString('ja-JP'); }
@@ -602,9 +613,12 @@ const N = STARS.length;
 const pos = new Float32Array(N*3), aColor = new Float32Array(N*3),
       aSize = new Float32Array(N), aBright = new Float32Array(N), aPulse = new Float32Array(N);
 /* 大きさ = 時価総額（対数）。無い星は従業員数で代替 */
+// 見た目の大きさ = 面積を時価総額に比例（=直径は規模スコアの平方根）。
+// これで「最大企業を100とした比例」を面積で表しつつ、小型株も点として視認できる。
+const SZ_FLOOR=1.0, SZ_MAX=13.0;
 function sizeOf(s){
-  if(s.mktcap) return THREE.MathUtils.clamp(1.1 + (Math.log10(s.mktcap)-0.8)*1.45, 1.1, 8.6);
-  return 1.6 + Math.log10(s.empl||300)*0.85;
+  if(s.sizeScore==null) return SZ_FLOOR*0.8;   // 時価総額データなし
+  return SZ_FLOOR + (SZ_MAX-SZ_FLOOR)*Math.sqrt(s.sizeScore/100);
 }
 STARS.forEach((s,i)=>{ pos[i*3]=s.x; pos[i*3+1]=s.y; pos[i*3+2]=s.z;
   aSize[i] = sizeOf(s); });
@@ -652,14 +666,14 @@ function paint(){
     const s = STARS[i]; const base = CLUSTERS[s.ci].col;
     let c = tmpC.copy(base), b=0.5, pulse=0;
     if(MODE==='visible'){
-      b = 0.14 + Math.pow(s.mass/100,1.35)*1.05;          // 明るさ = 優良企業度
+      b = 0.12 + s.qNorm*1.28;                            // 明るさ = 優良ポイント（1→100に比例）
     } else if(MODE==='sensor'){
-      b = 0.10 + Math.pow(s.mass/100,1.6)*1.15;
-      if(s.dg){ c = tmpC.copy(DGC); b = 0.9+s.mass/100*0.6; pulse=1; }
+      b = 0.10 + s.qNorm*1.2;
+      if(s.dg){ c = tmpC.copy(DGC); b = 1.0+s.qNorm*0.5; pulse=1; }
     } else { // hz
-      if(!ship.calibrated){ b = 0.18+(s.mass/100)*0.4; }
+      if(!ship.calibrated){ b = 0.16+s.qNorm*0.7; }
       else { const h = habitable(s);
-        if(h.ok){ c = tmpC.copy(HZC).lerp(base,0.25); b = 0.55+(s.mass/100)*0.8; pulse = s.dg?1:0; }
+        if(h.ok){ c = tmpC.copy(HZC).lerp(base,0.25); b = 0.5+s.qNorm*0.85; pulse = s.dg?1:0; }
         else { c = tmpC.copy(GRAY); b = 0.10; } }
     }
     aColor[i*3]=c.r; aColor[i*3+1]=c.g; aColor[i*3+2]=c.b;
@@ -756,7 +770,7 @@ if(matchMedia('(pointer:fine)').matches){
   canvas.addEventListener('pointermove',e=>{
     if(dragging || performance.now()-last<70) return; last=performance.now();
     const s=castStar(e.clientX,e.clientY);
-    if(s){ tip.innerHTML=`<span class="tn">${s.name}</span><br><span class="ti">${s.ind} ／ 優良度:${s.mass}${s.mktcap?' ／ '+fmtCap(s.mktcap):''}${s.dg?' ◆暗黒巨星':''}</span>`;
+    if(s){ tip.innerHTML=`<span class="tn">${s.name}</span><br><span class="ti">${s.ind} ／ 優良度:${s.qScore}${s.mktcap?' ／ '+fmtCap(s.mktcap):''}${s.dg?' ◆暗黒巨星':''}</span>`;
       tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+10)+'px'; }
     else hideTip();
   });
@@ -808,7 +822,7 @@ function showDailyDG(){
 
 /* --- モード切替 --- */
 const MODE_LABEL={visible:'可視光観測（優良企業度）', sensor:'深宇宙センサー（暗黒巨星走査）', hz:'HZレンズ（入植判定）'};
-const LEGEND_LABEL={visible:'大きさ = 時価総額 ／ 明るさ = 優良企業度',
+const LEGEND_LABEL={visible:'大きさ = 時価総額（面積が比例・最大=100）／ 明るさ = 優良企業度（1〜100）',
   sensor:'明るさ = 優良企業度 ／ <span style="color:#c9a7ff">◆紫 = 暗黒巨星（高優良度×低知名度）</span>',
   hz:'<span style="color:var(--hz)">緑 = あなたが暮らせる星</span> ／ 灰 = HZ圏外'};
 function setMode(m){
@@ -891,15 +905,18 @@ function renderPanel(s){
     `<span>従業員 ${s.empl?s.empl.toLocaleString()+'名':'—'}</span>`+
     (s.dg?`<span class="badge dg">◆ 暗黒巨星</span>`:'')+
     (s.niche?`<span class="badge niche">ニッチトップ記述</span>`:'');
+  const szTxt = s.sizeScore==null ? '<small style="color:var(--txt-dim)">—</small>'
+    : (s.sizeScore>=1?Math.round(s.sizeScore):s.sizeScore.toFixed(1))+' <small>/ 100</small>';
   $('p-stats').innerHTML =
     kv('時価総額（概算）', s.mktcap?fmtCap(s.mktcap):'<small style="color:var(--txt-dim)">—</small>') +
+    kv('規模スコア（最大企業=100）', szTxt) +
     kv('平均年収（推定）', nv(s.salary,'万円')) +
     kv('平均年齢 / 勤続', `${s.age!=null?s.age+'<small>歳</small>':'—'} / ${s.tenure!=null?s.tenure+'<small>年</small>':'—'}`) +
     kv('営業利益率', nv(s.margin,'%')) +
     kv('売上成長率(前年比)', nv(s.growth,'%',true));
-  $('p-mass').textContent = s.mass+' / 100';
+  $('p-mass').textContent = s.qScore+' / 100';
   $('p-albedo').textContent = Math.round(s.albedo*100)+'%';
-  requestAnimationFrame(()=>{ $('m-mass').style.width=s.mass+'%'; $('m-albedo').style.width=Math.round(s.albedo*100)+'%'; });
+  requestAnimationFrame(()=>{ $('m-mass').style.width=s.qScore+'%'; $('m-albedo').style.width=Math.round(s.albedo*100)+'%'; });
   $('p-dg-note').style.display = s.dg?'block':'none';
   $('p-atmo').innerHTML =
     kv('男性育休取得率', nv(s.papa,'%')) +
@@ -923,7 +940,7 @@ function renderPanel(s){
   $('descent').style.display='none'; $('descent').innerHTML='';
   // 航路
   $('p-routes').innerHTML = neighborsOf(s).map(n=>
-    `<div class="route"><span class="r-type">${n.type}</span><span class="r-name">${n.star.name}${n.star.dg?' ◆':''}<br><small style="color:var(--txt-dim);font-size:10px">${n.star.ind} ／ 優良度:${n.star.mass}${n.star.mktcap?' ／ '+fmtCap(n.star.mktcap):''}</small></span>
+    `<div class="route"><span class="r-type">${n.type}</span><span class="r-name">${n.star.name}${n.star.dg?' ◆':''}<br><small style="color:var(--txt-dim);font-size:10px">${n.star.ind} ／ 優良度:${n.star.qScore}${n.star.mktcap?' ／ '+fmtCap(n.star.mktcap):''}</small></span>
      <button class="r-go" data-id="${n.star.id}">WARP ▸</button></div>`).join('');
   $('p-routes').querySelectorAll('.r-go').forEach(b=>b.addEventListener('click',()=>selectStar(STARS[+b.dataset.id])));
   // 外部観測所（OpenWork / ONE CAREER / 転職会議）
