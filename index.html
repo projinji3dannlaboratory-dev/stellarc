@@ -52,6 +52,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
 .mode-btn[data-mode="hz"].active{background:rgba(82,224,154,.14);color:var(--hz)}
 #ship-btn{background:rgba(7,12,22,.7);border:1px solid var(--line);color:var(--txt);
   font-size:12px;padding:8px 14px;border-radius:3px;letter-spacing:.08em}
+#spin-btn{background:rgba(7,12,22,.7);border:1px solid var(--line);color:var(--txt-dim);
+  font-family:var(--mono);font-size:11px;padding:8px 12px;border-radius:3px;letter-spacing:.1em}
+#spin-btn.on{color:var(--amber);border-color:var(--amber-dim);background:rgba(255,180,84,.12)}
 
 #statusbar{left:16px;bottom:calc(86px + env(safe-area-inset-bottom));font-family:var(--mono);font-size:11px;
   color:var(--txt-dim);line-height:1.85;letter-spacing:.06em;text-shadow:0 1px 3px #000}
@@ -185,6 +188,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
   #logo{font-size:14px;letter-spacing:.22em}
   .mode-btn{padding:8px 9px;font-size:10px}
   #ship-btn{font-size:11px;padding:7px 9px}
+  #spin-btn{font-size:10px;padding:7px 8px;letter-spacing:.04em}
   #comm-log{bottom:calc(74px + env(safe-area-inset-bottom))}
 }
 @media (prefers-reduced-motion:reduce){
@@ -219,6 +223,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
     <button class="mode-btn" data-mode="sensor">深宇宙センサー</button>
     <button class="mode-btn" data-mode="hz">HZレンズ</button>
   </div>
+  <button id="spin-btn" class="on" aria-pressed="true" title="銀河の自動回転を切り替え">⟳ 自転 ON</button>
   <button id="ship-btn">⨂ 探査船設定</button>
 </div>
 
@@ -709,6 +714,7 @@ function drawRoute(a,b,color,op){
 /* --- カメラ制御（自作オービット + 慣性） --- */
 const cam = { theta:0.9, phi:1.18, r:240, tx:0, ty:0, tz:0,
               gtheta:0.9, gphi:1.18, gr:240, gtx:0, gty:0, gtz:0 };
+let autoRotate = true;   // 銀河の自動回転（デフォルトON・トグルで停止/再開）
 function applyCam(){
   cam.theta += (cam.gtheta-cam.theta)*0.085; cam.phi += (cam.gphi-cam.phi)*0.085;
   cam.r += (cam.gr-cam.r)*0.085;
@@ -790,7 +796,7 @@ addEventListener('resize',resize); resize();
 (function tick(){
   requestAnimationFrame(tick);
   starMat.uniforms.uTime.value = clock.getElapsedTime();
-  if(!dragging && pointers.size===0) cam.gtheta += 0.00035; // 微速の銀河自転
+  if(autoRotate && !dragging && pointers.size===0) cam.gtheta += 0.00035; // 微速の銀河自転
   applyCam();
   // 業種ラベルは俯瞰時のみ表示（接近すると消える）
   const lo = THREE.MathUtils.clamp((cam.r-34)/70, 0, 0.92);
@@ -841,6 +847,15 @@ function setMode(m){
   paint();
 }
 document.querySelectorAll('.mode-btn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+
+/* --- 自動回転トグル --- */
+$('spin-btn').addEventListener('click',()=>{
+  autoRotate = !autoRotate;
+  const b=$('spin-btn');
+  b.classList.toggle('on', autoRotate);
+  b.setAttribute('aria-pressed', autoRotate);
+  b.textContent = autoRotate ? '⟳ 自転 ON' : '⟳ 自転 OFF';
+});
 
 /* --- 探査船設定 --- */
 const shipmodal=$('shipmodal');
