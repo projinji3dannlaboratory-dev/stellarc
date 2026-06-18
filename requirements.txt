@@ -1,0 +1,6 @@
+# fetch_edinetdb.py（推奨パイプライン）に必要
+requests>=2.31
+
+# edinet_pipeline.py（予備・金融庁EDINET直叩き）を使う場合のみ追加で必要:
+#   pandas>=2.0
+#   xlrd>=2.0

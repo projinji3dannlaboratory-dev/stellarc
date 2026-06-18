@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>STELLARC — 宇宙探索型・企業発見プラットフォーム</title>
+<meta name="description" content="全上場企業を銀河に見立てて探索する企業発見プラットフォーム。大きさ=時価総額、輝き=優良企業度。EDINET開示情報に基づく観測データで、知名度に埋もれた優良企業（暗黒巨星）を見つける。">
+<meta property="og:title" content="STELLARC — 宇宙探索型・企業発見プラットフォーム">
+<meta property="og:description" content="星の大きさは時価総額、輝きは優良企業度。東証33業種の星雲を旅して、あなたが暮らせる星を見つけよう。">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --space:#04060d; --panel:rgba(7,12,22,.86); --line:rgba(255,180,84,.22);
+  --amber:#ffb454; --amber-dim:#9a7544; --teal:#7dd3c8; --hz:#52e09a;
+  --warn:#ff6b81; --txt:#d8e2ee; --txt-dim:#7e8ca0;
+  --mono:'Share Tech Mono',ui-monospace,monospace;
+  --jp:'Zen Kaku Gothic New','Hiragino Kaku Gothic ProN',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:var(--space);color:var(--txt);font-family:var(--jp)}
+#gl{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
+#gl.dragging{cursor:grabbing}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* ---------- BOOT ---------- */
+#boot{position:fixed;inset:0;background:var(--space);z-index:100;display:flex;align-items:center;justify-content:center;transition:opacity .8s}
+#boot.done{opacity:0;pointer-events:none}
+.boot-box{font-family:var(--mono);font-size:13px;color:var(--amber);width:min(520px,86vw)}
+.boot-title{font-size:clamp(28px,6vw,44px);letter-spacing:.42em;margin-bottom:6px;color:var(--txt)}
+.boot-sub{color:var(--txt-dim);letter-spacing:.2em;font-size:11px;margin-bottom:26px}
+.boot-line{opacity:0;transform:translateY(4px);transition:all .3s;margin:4px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.boot-line.on{opacity:1;transform:none}
+.boot-line .ok{color:var(--hz)}
+#boot-skip{margin-top:24px;background:none;border:1px solid var(--line);color:var(--txt-dim);font-family:var(--mono);font-size:11px;padding:8px 18px;letter-spacing:.2em}
+
+/* ---------- HUD frame ---------- */
+.hud{position:fixed;z-index:20;pointer-events:none}
+.hud *{pointer-events:auto}
+#topbar{top:0;left:0;right:0;display:flex;align-items:center;gap:14px;padding:12px 16px;
+  background:linear-gradient(180deg,rgba(4,6,13,.92),rgba(4,6,13,0))}
+#logo{font-family:var(--mono);font-size:18px;letter-spacing:.34em;color:var(--txt);user-select:none}
+#logo b{color:var(--amber);font-weight:400}
+#demo-badge{font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--warn);
+  border:1px solid rgba(255,107,129,.4);padding:3px 7px;border-radius:2px}
+#mode-group{display:flex;gap:1px;margin-left:auto;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.mode-btn{background:rgba(7,12,22,.7);border:none;color:var(--txt-dim);font-family:var(--mono);
+  font-size:11px;letter-spacing:.12em;padding:9px 13px;transition:all .2s}
+.mode-btn.active{background:rgba(255,180,84,.16);color:var(--amber)}
+.mode-btn[data-mode="hz"].active{background:rgba(82,224,154,.14);color:var(--hz)}
+#ship-btn{background:rgba(7,12,22,.7);border:1px solid var(--line);color:var(--txt);
+  font-size:12px;padding:8px 14px;border-radius:3px;letter-spacing:.08em}
+
+#statusbar{left:16px;bottom:calc(86px + env(safe-area-inset-bottom));font-family:var(--mono);font-size:11px;
+  color:var(--txt-dim);line-height:1.85;letter-spacing:.06em;text-shadow:0 1px 3px #000}
+#statusbar .v{color:var(--amber)}
+#statusbar .hzv{color:var(--hz)}
+#legend{right:16px;bottom:calc(86px + env(safe-area-inset-bottom));font-family:var(--mono);font-size:10px;
+  color:var(--txt-dim);text-align:right;line-height:1.9;letter-spacing:.08em;text-shadow:0 1px 3px #000}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-left:7px;vertical-align:1px}
+
+/* ---------- 交信 ---------- */
+#comm{left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));width:min(620px,92vw);display:flex;gap:8px}
+#comm-input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:4px;
+  color:var(--txt);font-family:var(--jp);font-size:14px;padding:13px 16px;backdrop-filter:blur(8px)}
+#comm-input::placeholder{color:var(--txt-dim)}
+.comm-btn{background:var(--panel);border:1px solid var(--line);border-radius:4px;color:var(--amber);
+  font-family:var(--mono);font-size:12px;padding:0 16px;letter-spacing:.1em;backdrop-filter:blur(8px)}
+#mic-btn.rec{color:var(--warn);border-color:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.4}}
+
+#comm-log{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom));
+  width:min(620px,92vw);z-index:19;pointer-events:none}
+.comm-msg{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);
+  border-radius:3px;padding:12px 16px;font-size:13px;line-height:1.7;margin-top:8px;backdrop-filter:blur(8px);
+  animation:rise .4s ease}
+.comm-msg .who{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.2em;display:block;margin-bottom:4px}
+.comm-msg .targets{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
+.target-chip{background:rgba(255,180,84,.1);border:1px solid var(--line);color:var(--txt);
+  font-size:12px;padding:5px 11px;border-radius:3px}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- toast ---------- */
+#toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:30;background:var(--panel);
+  border:1px solid var(--line);border-radius:4px;padding:12px 18px;font-size:13px;display:none;
+  align-items:center;gap:14px;backdrop-filter:blur(8px);animation:rise .5s ease;max-width:92vw}
+#toast.on{display:flex}
+#toast .t-label{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.2em}
+#toast button{background:none;border:1px solid var(--amber-dim);color:var(--amber);font-size:12px;padding:5px 12px;border-radius:3px}
+
+/* ---------- tooltip ---------- */
+#tip{position:fixed;z-index:25;pointer-events:none;display:none;font-family:var(--mono);font-size:11px;
+  background:rgba(4,6,13,.9);border:1px solid var(--line);padding:6px 10px;border-radius:2px;letter-spacing:.05em}
+#tip .tn{color:var(--txt);font-family:var(--jp);font-size:12px}
+#tip .ti{color:var(--txt-dim);font-size:10px}
+
+/* ---------- 軌道投入パネル ---------- */
+#panel{position:fixed;z-index:40;top:0;right:0;bottom:0;width:400px;max-width:100vw;background:var(--panel);
+  border-left:1px solid var(--line);backdrop-filter:blur(14px);transform:translateX(105%);
+  transition:transform .45s cubic-bezier(.22,1,.3,1);display:flex;flex-direction:column}
+#panel.open{transform:none}
+#panel-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+#panel-eyebrow{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.3em;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+#panel-close{background:none;border:none;color:var(--txt-dim);font-size:18px;line-height:1;padding:2px 6px}
+#p-name{font-size:21px;font-weight:700;letter-spacing:.04em}
+#p-meta{font-size:12px;color:var(--txt-dim);margin-top:5px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.badge{font-family:var(--mono);font-size:9px;letter-spacing:.14em;padding:3px 8px;border-radius:2px}
+.badge.dg{color:#c9a7ff;border:1px solid rgba(201,167,255,.45);background:rgba(201,167,255,.08)}
+.badge.niche{color:var(--teal);border:1px solid rgba(125,211,200,.4)}
+#panel-body{flex:1;overflow-y:auto;padding:6px 20px 28px;scrollbar-width:thin}
+.sec{margin-top:20px}
+.sec-t{font-family:var(--mono);font-size:10px;color:var(--amber-dim);letter-spacing:.3em;border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.kv .k{font-size:10px;color:var(--txt-dim);letter-spacing:.08em}
+.kv .v{font-family:var(--mono);font-size:16px;color:var(--txt);margin-top:1px}
+.kv .v small{font-size:10px;color:var(--txt-dim)}
+.meter{height:5px;background:rgba(255,255,255,.07);border-radius:3px;margin-top:5px;overflow:hidden}
+.meter i{display:block;height:100%;border-radius:3px;background:var(--amber);width:0;transition:width 1s cubic-bezier(.22,1,.3,1)}
+.hz-verdict{border:1px solid var(--line);border-radius:4px;padding:14px;text-align:center}
+.hz-verdict.ok{border-color:rgba(82,224,154,.5);background:rgba(82,224,154,.06)}
+.hz-verdict.ng{border-color:rgba(255,107,129,.45);background:rgba(255,107,129,.05)}
+.hz-big{font-family:var(--mono);font-size:18px;letter-spacing:.12em;margin-bottom:4px}
+.hz-verdict.ok .hz-big{color:var(--hz)} .hz-verdict.ng .hz-big{color:var(--warn)}
+.hz-sub{font-size:11px;color:var(--txt-dim);line-height:1.7}
+.cta{width:100%;margin-top:12px;background:rgba(255,180,84,.12);border:1px solid var(--amber-dim);
+  color:var(--amber);font-size:13px;letter-spacing:.14em;padding:12px;border-radius:3px;font-family:var(--mono)}
+.cta:hover{background:rgba(255,180,84,.2)}
+/* 降下シミュレーション */
+#descent{display:none;margin-top:14px}
+.d-row{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:13px;
+  padding:7px 2px;border-bottom:1px dashed rgba(255,255,255,.08);opacity:0;transform:translateX(-8px);transition:all .4s}
+.d-row.on{opacity:1;transform:none}
+.d-row .dk{font-family:var(--jp);font-size:11px;color:var(--txt-dim)}
+.d-row.minus .dv{color:var(--warn)} .d-row.final{border-bottom:none;border-top:1px solid var(--line);margin-top:4px;padding-top:10px}
+.d-row.final .dv{color:var(--hz);font-size:17px}
+.proj{display:flex;gap:6px;margin-top:12px}
+.proj .pcol{flex:1;text-align:center;font-family:var(--mono)}
+.proj .pbar{background:rgba(255,255,255,.06);border-radius:2px;height:64px;display:flex;align-items:flex-end;overflow:hidden}
+.proj .pbar i{display:block;width:100%;background:linear-gradient(180deg,var(--teal),rgba(125,211,200,.25));height:0;transition:height 1.2s cubic-bezier(.22,1,.3,1)}
+.proj .pv{font-size:10px;color:var(--teal);margin-top:5px}.proj .pk{font-size:9px;color:var(--txt-dim)}
+/* 航路 */
+.route{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed rgba(255,255,255,.07)}
+.route .r-type{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--teal);border:1px solid rgba(125,211,200,.35);padding:2px 6px;border-radius:2px;white-space:nowrap}
+.route .r-name{flex:1;font-size:13px}
+.route .r-go{background:none;border:1px solid var(--amber-dim);color:var(--amber);font-family:var(--mono);font-size:10px;padding:4px 9px;border-radius:2px;letter-spacing:.1em}
+.ext-note{font-size:11px;color:var(--txt-dim);line-height:1.8}
+.share-row{display:flex;gap:8px;margin-top:10px}
+.share-row .cta{margin-top:0}
+
+/* ---------- 探査船設定モーダル ---------- */
+#shipmodal{position:fixed;inset:0;z-index:60;background:rgba(2,4,9,.7);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#shipmodal.on{display:flex}
+.modal-box{width:min(440px,92vw);max-height:88vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:24px}
+.modal-box h2{font-family:var(--mono);font-size:13px;letter-spacing:.3em;color:var(--amber);margin-bottom:4px}
+.modal-box .msub{font-size:11px;color:var(--txt-dim);margin-bottom:18px;line-height:1.7}
+.f-row{margin-bottom:15px}
+.f-row label{display:flex;justify-content:space-between;font-size:12px;color:var(--txt-dim);margin-bottom:7px}
+.f-row label output{font-family:var(--mono);color:var(--amber);font-size:13px}
+input[type=range]{width:100%;accent-color:var(--amber);height:22px}
+.seg{display:flex;gap:1px;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg button{flex:1;background:transparent;border:none;color:var(--txt-dim);font-size:12px;padding:9px 4px}
+.seg button.active{background:rgba(255,180,84,.15);color:var(--amber)}
+#grav-readout{font-family:var(--mono);font-size:12px;color:var(--txt);border:1px solid var(--line);border-radius:3px;padding:12px;margin:6px 0 16px;line-height:1.9}
+#grav-readout b{color:var(--hz);font-weight:400}
+.modal-actions{display:flex;gap:10px}
+.modal-actions .cta{margin-top:0}
+.ghost{background:none;border:1px solid var(--line);color:var(--txt-dim);font-size:12px;padding:12px;border-radius:3px;flex:1}
+
+/* ---------- sensor sweep ---------- */
+#sweep{position:fixed;inset:0;z-index:15;pointer-events:none;opacity:0;
+  background:radial-gradient(circle at 50% 50%,rgba(201,167,255,.0) 30%,rgba(201,167,255,.14) 46%,rgba(201,167,255,0) 60%);
+  transform:scale(.1)}
+#sweep.go{animation:sweep 1.4s ease-out}
+@keyframes sweep{0%{opacity:1;transform:scale(.05)}100%{opacity:0;transform:scale(3)}}
+
+/* ---------- mobile ---------- */
+@media (max-width:760px){
+  #panel{top:auto;left:0;right:0;width:100%;height:62vh;border-left:none;border-top:1px solid var(--line);
+    border-radius:14px 14px 0 0;transform:translateY(105%)}
+  #panel.open{transform:none}
+  #statusbar{display:none}
+  #legend{bottom:calc(84px + env(safe-area-inset-bottom));font-size:9px}
+  #logo{font-size:14px;letter-spacing:.22em}
+  .mode-btn{padding:8px 9px;font-size:10px}
+  #ship-btn{font-size:11px;padding:7px 9px}
+  #comm-log{bottom:calc(74px + env(safe-area-inset-bottom))}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01s!important;transition-duration:.01s!important}
+}
+</style>
+</head>
+<body>
+
+<canvas id="gl" aria-label="銀河マップ"></canvas>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-box">
+    <div class="boot-title">STELLARC</div>
+    <div class="boot-sub">COMPANY DISCOVERY OBSERVATORY</div>
+    <div class="boot-line" data-d="0">&gt; 観測機構を起動 .......... <span class="ok">OK</span></div>
+    <div class="boot-line" data-d="350">&gt; 銀河座標系を展開 / 東証33業種星雲 .......... <span class="ok">OK</span></div>
+    <div class="boot-line" data-d="700">&gt; 上場企業の観測データを同期（大きさ=時価総額） .......... <span class="ok">OK</span></div>
+    <div class="boot-line" data-d="1050">&gt; 優良企業度スペクトル解析・経済物理エンジン接続 .......... <span class="ok">OK</span></div>
+    <div class="boot-line" data-d="1400">&gt; データソース整合性チェック .......... <span class="ok">OK</span></div>
+    <button id="boot-skip">タップして出航 ▸</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div class="hud" id="topbar">
+  <div id="logo">STELL<b>A</b>RC</div>
+  <div id="demo-badge">DEMO DATA</div>
+  <div id="mode-group" role="group" aria-label="観測モード">
+    <button class="mode-btn active" data-mode="visible">可視光</button>
+    <button class="mode-btn" data-mode="sensor">深宇宙センサー</button>
+    <button class="mode-btn" data-mode="hz">HZレンズ</button>
+  </div>
+  <button id="ship-btn">⨂ 探査船設定</button>
+</div>
+
+<div class="hud" id="statusbar">
+  OBSERVATORY <span class="v">ONLINE</span> ／ 観測天体 <span class="v" id="st-count">—</span><br>
+  自船重力負荷 <span class="v" id="st-grav">—</span> ／ HZ入植可能 <span class="hzv" id="st-hz">—</span><br>
+  <span id="st-mode">MODE: 可視光観測</span>
+</div>
+
+<div class="hud" id="legend">
+  ドラッグ=旋回 ／ ホイール・ピンチ=接近<br>
+  星をタップ=軌道投入 ／ 業種名をタップ=星雲へ<br>
+  <span id="legend-mode">大きさ = 時価総額 ／ 明るさ = 優良企業度</span>
+</div>
+
+<div id="comm-log" aria-live="polite"></div>
+<div class="hud" id="comm">
+  <input id="comm-input" type="text" placeholder="管制塔に交信（例：残業が少なくて世界シェアが高い隠れた会社）" aria-label="管制塔への交信">
+  <button class="comm-btn" id="mic-btn" title="音声で交信" aria-label="音声入力">●REC</button>
+  <button class="comm-btn" id="send-btn">交信</button>
+</div>
+
+<div id="toast" role="status"><span class="t-label">今日の暗黒巨星</span><span id="toast-name"></span><button id="toast-go">観測 ▸</button></div>
+<div id="tip"></div>
+
+<!-- 軌道投入パネル -->
+<aside id="panel" aria-label="企業詳細">
+  <div id="panel-head">
+    <div id="panel-eyebrow"><span>ORBIT INSERTION — 軌道投入</span><button id="panel-close" aria-label="閉じる">✕</button></div>
+    <div id="p-name"></div>
+    <div id="p-meta"></div>
+  </div>
+  <div id="panel-body">
+    <div class="sec">
+      <div class="sec-t">STELLAR DATA — 恒星観測値</div>
+      <div class="grid2" id="p-stats"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">SPECTRUM — 優良度 / 知名度 乖離</div>
+      <div class="kv"><div class="k">優良企業度（成長率・利益率・働きやすさ・年収の独自スコア）</div><div class="v" id="p-mass"></div><div class="meter"><i id="m-mass"></i></div></div>
+      <div class="kv" style="margin-top:10px"><div class="k">アルベド（知名度）</div><div class="v" id="p-albedo"></div><div class="meter"><i id="m-albedo" style="background:var(--txt-dim)"></i></div></div>
+      <div id="p-dg-note" style="font-size:11px;color:#c9a7ff;margin-top:10px;line-height:1.7;display:none">
+        ◆ 暗黒巨星認定 — 優良企業度は高いが可視光では暗い。知名度フィルターの外側にある優良天体。</div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">ATMOSPHERE — 大気観測（人的資本開示）</div>
+      <div class="grid2" id="p-atmo"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">HABITABLE ZONE — 入植判定</div>
+      <div class="hz-verdict" id="p-hz"></div>
+      <button class="cta" id="descent-btn">▼ 降下シミュレーション開始</button>
+      <div id="descent"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">ADJACENT SYSTEMS — 隣接星系（航路検出）</div>
+      <div id="p-routes"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">EXTERNAL OBSERVATORIES — 外部観測所</div>
+      <div id="p-ext"></div>
+      <div class="share-row">
+        <button class="cta" id="share-btn">⤴ 観測記録をシェア</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- 探査船設定 -->
+<div id="shipmodal" role="dialog" aria-modal="true" aria-label="探査船設定">
+  <div class="modal-box">
+    <h2>SHIP CONFIG — 探査船設定</h2>
+    <div class="msub">あなたの生活条件＝船の重力負荷です。設定するとHZレンズ（入植可能判定）が銀河全体に適用されます。</div>
+    <div class="f-row"><label>パイロット年齢 <output id="o-age">28歳</output></label>
+      <input type="range" id="f-age" min="20" max="59" value="28"></div>
+    <div class="f-row"><label>母港（勤務地想定）</label>
+      <div class="seg" id="f-region">
+        <button data-v="1.0" class="active">首都圏</button><button data-v="0.92">都市圏</button><button data-v="0.82">地方</button>
+      </div></div>
+    <div class="f-row"><label>居住コスト（家賃/月） <output id="o-rent">9.0万円</output></label>
+      <input type="range" id="f-rent" min="3" max="25" step="0.5" value="9"></div>
+    <div class="f-row"><label>乗組員（扶養家族）</label>
+      <div class="seg" id="f-family">
+        <button data-v="0" class="active">単独航行</button><button data-v="1">+1名</button><button data-v="2">+2名</button><button data-v="3">+3名〜</button>
+      </div></div>
+    <div class="f-row"><label>目標貯蓄（推進剤備蓄/月） <output id="o-save">3.0万円</output></label>
+      <input type="range" id="f-save" min="0" max="15" step="0.5" value="3"></div>
+    <div id="grav-readout"></div>
+    <div class="modal-actions">
+      <button class="ghost" id="ship-cancel">閉じる</button>
+      <button class="cta" id="ship-apply" style="flex:1.4">HZレンズを較正する</button>
+    </div>
+  </div>
+</div>
+
+<div id="sweep"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!-- 本番データ（edinet_pipeline.py が生成）。無ければ自動でデモ銀河にフォールバック -->
+<script src="stellarc_data.js"></script>
+<script>
+'use strict';
+/* =====================================================================
+   STELLARC v2「上場銀河」
+   ・星の大きさ   = 時価総額（対数スケール）
+   ・星の輝き     = 優良企業度（売上成長率・営業利益率・働きやすさ・年収の独自スコア）
+   ・星雲         = 東証33業種クラスタ（ラベル付き）
+   stellarc_data.js（EDINETパイプライン出力）があれば実データ、無ければデモ銀河
+===================================================================== */
+
+/* ---------- 乱数（シード固定で毎回同じ銀河） ---------- */
+let _s = 20260612;
+function rnd(){ _s = (_s*1664525 + 1013904223) % 4294967296; return _s/4294967296; }
+function rrange(a,b){ return a + (b-a)*rnd(); }
+function gauss(){ return (rnd()+rnd()+rnd()+rnd()-2)/2; }
+
+/* ---------- 業種定義（東証33業種） ---------- */
+const INDUSTRIES = [
+ ['情報・通信業',520,'#6db8ff',620],['サービス業',540,'#8fa7ff',560],['卸売業',300,'#ffd27d',620],
+ ['小売業',330,'#ffb37d',520],['電気機器',240,'#7de0ff',640],['機械',230,'#9fd6c8',610],
+ ['化学',210,'#c9a7ff',630],['建設業',160,'#e0c08a',590],['食料品',125,'#ffc4a0',560],
+ ['不動産業',140,'#d8b4e2',600],['銀行業',78,'#a8c5e8',640],['医薬品',72,'#ff9fbe',680],
+ ['輸送用機器',88,'#88c9a0',620],['金属製品',92,'#c8c8d8',560],['その他製品',110,'#bcd8a0',570],
+ ['精密機器',52,'#7dd3c8',650],['鉄鋼',44,'#e8a08a',600],['非鉄金属',35,'#d8c090',590],
+ ['ガラス・土石製品',56,'#a0d8e0',580],['繊維製品',50,'#e8b8d0',540],['パルプ・紙',25,'#d0d8b0',560],
+ ['ゴム製品',19,'#b0c8b8',590],['石油・石炭製品',11,'#f0a878',640],['その他金融業',95,'#c0b8f0',590],
+ ['陸運業',64,'#a8d0a8',570],['海運業',13,'#80c0e8',660],['空運業',6,'#90d0f0',600],
+ ['倉庫・運輸関連業',38,'#c8d0a0',560],['電気・ガス業',24,'#f0d080',680],['証券、商品先物取引業',40,'#b8d0e8',650],
+ ['保険業',16,'#d0c0e0',660],['鉱業',7,'#d8a888',620],['水産・農林業',12,'#a0e0c0',540]
+];
+// 合計を3785に正規化
+{ let tot = INDUSTRIES.reduce((a,x)=>a+x[1],0);
+  INDUSTRIES.forEach(x=>x[1]=Math.round(x[1]*3785/tot));
+  let d = 3785-INDUSTRIES.reduce((a,x)=>a+x[1],0); INDUSTRIES[0][1]+=d; }
+
+/* ---------- 社名ジェネレーター（デモ用） ---------- */
+const PRE = ['東邦','北辰','三和','旭','大和','瑞穂','八雲','常磐','若葉','曙','日新','双葉','千歳','高砂','明和','協立','興亜','白嶺','遠州','信越','京浜','阪和','備前','筑紫','出雲','土佐','会津','飛騨','相模','武蔵','尾張','加賀','越後','石狩','琉央','南海','北洋','大江','清流','光陽'];
+const CORE = {
+ tech:['システムズ','データ','ソフト','ネット','テクノ','デジタル','情報'],
+ mfg:['精機','製作所','工業','機工','重工','技研','エンジニアリング'],
+ chem:['化成','化学','薬品','マテリアル','樹脂'],
+ elec:['電子','電機','計器','デバイス','光学'],
+ food:['食品','製菓','乳業','製粉','醸造'],
+ trade:['商事','物産','貿易','興産'],
+ svc:['ホールディングス','サービス','パートナーズ','企画'],
+ misc:['産業','実業','製造','開発']};
+function coreFor(ind){
+  if(/情報|通信/.test(ind)) return CORE.tech;
+  if(/機械|輸送|金属|鉄鋼|精密|その他製品/.test(ind)) return CORE.mfg;
+  if(/化学|医薬|ゴム|石油|パルプ|繊維|ガラス/.test(ind)) return CORE.chem;
+  if(/電気機器/.test(ind)) return CORE.elec;
+  if(/食料|水産/.test(ind)) return CORE.food;
+  if(/卸売|商社/.test(ind)) return CORE.trade;
+  if(/サービス|小売|不動産|銀行|証券|保険|金融/.test(ind)) return CORE.svc;
+  return CORE.misc;
+}
+const usedNames = new Set();
+function genName(ind){
+  for(let i=0;i<24;i++){
+    const c = coreFor(ind);
+    const n = PRE[(rnd()*PRE.length)|0] + c[(rnd()*c.length)|0];
+    if(!usedNames.has(n)){ usedNames.add(n); return n; }
+  }
+  const n = PRE[(rnd()*PRE.length)|0]+coreFor(ind)[0]+((rnd()*90+10)|0);
+  usedNames.add(n); return n;
+}
+
+/* ---------- 星雲（業種クラスタ）配置 — 塊が見えるよう分離を強化 ---------- */
+const STARS = [];
+const CLUSTERS = [];
+const N_IND = INDUSTRIES.length;
+INDUSTRIES.forEach((indDef,ci)=>{
+  const [ind,count,colHex] = indDef;
+  const arm = ci%2, t = (ci/N_IND)*Math.PI*3.2 + arm*Math.PI;
+  const R = 48 + (ci/N_IND)*138;
+  CLUSTERS.push({ind, cx:Math.cos(t)*R, cy:gauss()*14, cz:Math.sin(t)*R,
+    col:new THREE.Color(colHex), colHex, count});
+});
+function clusterPos(ci,u){
+  const cl=CLUSTERS[ci], sigma = 6 + Math.sqrt(Math.max(cl.count,30))*0.45;
+  const g=(a,b)=>(a+b-1)*1.15;
+  return { x:cl.cx+g(u[0],u[1])*sigma*1.6, y:cl.cy+g(u[2],u[3])*sigma*0.38, z:cl.cz+g(u[4],u[5])*sigma*1.6 };
+}
+function strHash(str){ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h; }
+
+/* ---------- 優良企業度スコア（0–100） ----------
+   売上成長率 / 営業利益率 / 働きやすさ（外部評価 or 勤続・育休） / 平均年収 */
+function ratingAvgOf(s){
+  const a=[s.ow,s.oc,s.jt].filter(v=>v!=null);
+  return a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+}
+function massOf(s){
+  const pSal = Math.min(s.salary||450,900)/900*25;                                // 年収       25pt
+  const pMar = Math.min(Math.max(s.margin==null?5:s.margin,0),18)/18*25;          // 営業利益率 25pt
+  const pGro = Math.min(Math.max(s.growth==null?3:s.growth,0),18)/18*20;          // 売上成長率 20pt
+  const ra = ratingAvgOf(s);                                                      // 働きやすさ 30pt
+  const pWork = ra!=null
+    ? Math.min(Math.max((ra-1.8)/2.6,0),1)*30
+    : Math.min(s.tenure==null?8:s.tenure,16)/16*18 + Math.min(s.papa==null?30:s.papa,80)/80*12;
+  return Math.min(100, Math.max(3, Math.round(pSal+pMar+pGro+pWork + (s.niche?6:0))));
+}
+/* 時価総額の表示（億円 / 兆円） */
+const fmtCap = v => v>=10000 ? (Math.round(v/1000)/10).toLocaleString('ja-JP')+'兆円'
+                             : Math.round(v).toLocaleString('ja-JP')+'億円';
+
+/* ---------- A) デモ銀河（架空データ・フォールバック） ---------- */
+function buildDemo(){
+  INDUSTRIES.forEach((indDef,ci)=>{
+    const [ind,count,,baseSalary] = indDef;
+    for(let i=0;i<count;i++){
+      const p = clusterPos(ci,[rnd(),rnd(),rnd(),rnd(),rnd(),rnd()]);
+      const empl = Math.round(Math.exp(rrange(3.9,9.6)));
+      const salary = Math.max(330, Math.round(baseSalary*(0.72+rnd()*0.85)/10)*10);
+      const age = Math.round(rrange(31,46));
+      const tenure = Math.max(2, Math.round(age-22-rrange(0,10)));
+      const margin = Math.round(rrange(-1,4)+rnd()*rnd()*22);
+      const growth = Math.round(rrange(-4,6)+rnd()*rnd()*24);
+      const niche = rnd() < (/機械|化学|精密|電気機器|金属|ガラス/.test(ind)?0.14:0.04);
+      const s = { id:STARS.length, code:null, market:null, name:genName(ind), ind, ci,
+        x:p.x, y:p.y, z:p.z, empl, salary, age, tenure, margin, growth, niche,
+        ow:null, oc:null, jt:null, mktcap:null,
+        papa:Math.round(rrange(8,90)), fkanri:Math.round(rrange(2,32)), wagegap:Math.round(rrange(58,92)) };
+      s.mass = massOf(s);
+      // 外部評価（デモ）: 約6割の星に、優良度と緩く相関するスコアを付与
+      if(rnd()<0.6){
+        const base = 2.1 + s.mass/100*2.5;
+        const mk = ()=> Math.round(Math.min(4.9,Math.max(1.4, base+gauss()*0.45))*10)/10;
+        s.ow=mk(); if(rnd()<0.8) s.oc=mk(); if(rnd()<0.8) s.jt=mk();
+        s.mass = massOf(s);
+      }
+      s.mass = Math.min(100, s.mass + Math.round(rnd()*4));
+      // 時価総額（億円・デモ）: 約10億〜数兆円の対数分布
+      let cap = Math.exp(rrange(2.3,9.0)) * (0.6 + s.mass/100);
+      if(rnd()<0.012) cap *= rrange(5,45);
+      s.mktcap = Math.round(cap);
+      let albedo = Math.min(1, Math.max(0.02,
+        0.12 + Math.log10(empl)/5*0.5 + (salary-450)/1400 + gauss()*0.22 ));
+      if(/銀行|保険|空運|電気・ガス/.test(ind)) albedo = Math.min(1, albedo+0.25);
+      s.albedo = albedo; s.dg = s.mass>=70 && albedo<=0.35;
+      STARS.push(s);
+    }
+  });
+}
+
+/* ---------- B) 本番銀河（EDINETパイプライン出力 stellarc_data.js） ---------- */
+function buildFromReal(rows){
+  const idx={}; CLUSTERS.forEach((c,i)=>{ idx[c.ind]=i; c.count=0; });
+  const ok = rows.filter(d=>d && d.name && d.salary>0);
+  ok.forEach(d=>{ const ci = idx[d.ind]!=null ? idx[d.ind] : idx['サービス業']; CLUSTERS[ci].count++; });
+  ok.forEach(d=>{
+    const ci = idx[d.ind]!=null ? idx[d.ind] : idx['サービス業'];
+    const h = strHash(String(d.code||d.name));
+    const u = [0,1,2,3,4,5].map(k=>((h>>>(k*5))&1023)/1023);
+    const p = clusterPos(ci,u);
+    const s = { id:STARS.length, code:d.code||null, market:d.market||null,
+      name:d.name, ind:CLUSTERS[ci].ind, ci, x:p.x, y:p.y, z:p.z,
+      empl:d.empl||null, salary:Math.round(d.salary),
+      age:d.age!=null?Math.round(d.age*10)/10:null,
+      tenure:d.tenure!=null?Math.round(d.tenure*10)/10:null,
+      margin:d.margin!=null?Math.round(d.margin*10)/10:null,
+      growth:d.growth!=null?Math.round(d.growth*10)/10:null,
+      niche:false,
+      mktcap:d.mktcap!=null&&d.mktcap>0?Math.round(d.mktcap):null,   // 億円
+      ow:d.ow!=null?d.ow:null, oc:d.oc!=null?d.oc:null, jt:d.jt!=null?d.jt:null,  // 外部評価(1–5)
+      papa:d.papa!=null?Math.round(d.papa):null,
+      fkanri:d.fkanri!=null?Math.round(d.fkanri):null,
+      wagegap:d.wagegap!=null?Math.round(d.wagegap):null };
+    s.mass = massOf(s);
+    const e = s.empl||300;
+    // 知名度(albedo) = 企業の「目立ちやすさ」= 時価総額 + 従業員規模（優良度とは独立）
+    const normCap = s.mktcap ? Math.min(Math.max((Math.log10(s.mktcap)-1.3)/3.2,0),1) : 0.18;
+    const normEmp = Math.min(Math.max((Math.log10(e)-2)/3,0),1);
+    let albedo = 0.10 + normCap*0.62 + normEmp*0.22 + (((h>>>13)&255)/255-0.5)*0.06;
+    if(/銀行|保険|空運|電気・ガス/.test(s.ind) || e>30000) albedo += 0.15;
+    s.albedo = Math.min(1, Math.max(0.03, albedo));
+    s.dg = s.mass>=70 && s.albedo<=0.35;
+    STARS.push(s);
+  });
+}
+
+const USING_REAL = Array.isArray(window.STELLARC_DATA) && window.STELLARC_DATA.length>100;
+if(USING_REAL) buildFromReal(window.STELLARC_DATA); else buildDemo();
+const TOTAL = STARS.length;
+const DARK_GIANTS = STARS.filter(s=>s.dg);
+{ const b=document.getElementById('demo-badge');
+  if(USING_REAL){ b.textContent='LIVE — EDINET'; b.style.color='var(--teal)'; b.style.borderColor='rgba(125,211,200,.45)'; }
+  const c=document.getElementById('st-count'); if(c) c.textContent=TOTAL.toLocaleString('ja-JP'); }
+
+/* ---------- 手取りエンジン（2026年度・概算） ---------- */
+function kyuyoKojo(g){ // 給与所得控除(万円)
+  if(g<=162.5) return 55; if(g<=180) return g*0.4-10; if(g<=360) return g*0.3+8;
+  if(g<=660) return g*0.2+44; if(g<=850) return g*0.1+110; return 195; }
+function incomeTax(taxable){ // 万円, 復興税込
+  const b=[[195,.05,0],[330,.10,9.75],[695,.20,42.75],[900,.23,63.6],[1800,.33,153.6],[4000,.40,279.6],[1e9,.45,479.6]];
+  for(const [lim,r,d] of b) if(taxable<=lim) return Math.max(0,(taxable*r-d)*1.021);
+  return 0; }
+function tedori(grossMan, family){ // 額面(万円)→ {net, si, it, rt} 年額万円
+  const si = Math.min(grossMan,1100)*0.0499 + Math.min(grossMan,800)*0.0915
+           + grossMan*0.0055 + Math.min(grossMan,1100)*0.001;          // 健保+厚年+雇用+支援金
+  const dep = family*38;                                              // 扶養控除ざっくり
+  const taxableIT = Math.max(0, grossMan - kyuyoKojo(grossMan) - 95 - si - dep);
+  const it = incomeTax(taxableIT);
+  const taxableRT = Math.max(0, grossMan - kyuyoKojo(grossMan) - 43 - si - dep);
+  const rt = taxableRT*0.10 + 0.5;
+  return { net: grossMan-si-it-rt, si, it, rt };
+}
+function salaryAtAge(star, a){ // 年齢カーブ（平均年収を平均年齢でアンカー）
+  const curve = x => Math.min(0.50+0.024*(x-22), 1.18);
+  return star.salary * curve(a)/curve(star.age||40);
+}
+
+/* ---------- パイロット（探査船）プロファイル ---------- */
+const ship = { age:28, regionF:1.0, rent:9, family:0, save:3, calibrated:false };
+function livingCost(){ // 月額万円：家賃 + 基礎生活 + 家族 + 貯蓄目標
+  return ship.rent + 13*ship.regionF + ship.family*4.5 + ship.save;
+}
+function habitable(star){
+  const g = salaryAtAge(star, ship.age) * ship.regionF; // 地方ほど名目はやや低い想定
+  const net = tedori(g, ship.family).net;
+  const monthly = net/12;
+  return { ok: monthly >= livingCost(), monthly, need: livingCost(), gross:g };
+}
+
+/* =====================================================================
+   THREE.JS — 銀河レンダリング
+===================================================================== */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#04060d');
+const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 4000);
+
+/* --- 背景の微星 --- */
+{ const n=2200, g=new THREE.BufferGeometry(), p=new Float32Array(n*3);
+  for(let i=0;i<n;i++){ const r=rrange(500,1500), th=rnd()*Math.PI*2, ph=Math.acos(rrange(-1,1));
+    p[i*3]=r*Math.sin(ph)*Math.cos(th); p[i*3+1]=r*Math.cos(ph); p[i*3+2]=r*Math.sin(ph)*Math.sin(th); }
+  g.setAttribute('position', new THREE.BufferAttribute(p,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({color:0x3a4a66,size:1.1,sizeAttenuation:false}))); }
+
+/* --- 星雲スプライト --- */
+function softTex(){
+  const c=document.createElement('canvas'); c.width=c.height=256;
+  const x=c.getContext('2d'), gr=x.createRadialGradient(128,128,0,128,128,128);
+  gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(.4,'rgba(255,255,255,.25)'); gr.addColorStop(1,'rgba(255,255,255,0)');
+  x.fillStyle=gr; x.fillRect(0,0,256,256); return new THREE.CanvasTexture(c);
+}
+const SOFT = softTex();
+CLUSTERS.forEach(cl=>{
+  const m = new THREE.SpriteMaterial({map:SOFT, color:cl.col, transparent:true,
+    opacity:0.13, blending:THREE.AdditiveBlending, depthWrite:false});
+  const sp = new THREE.Sprite(m);
+  const s = 22 + Math.sqrt(cl.count)*1.7;
+  sp.position.set(cl.cx,cl.cy,cl.cz); sp.scale.set(s,s*0.6,1); scene.add(sp);
+});
+
+/* --- 業種ラベル（33業種の星雲名・タップで星雲へ） --- */
+function labelTex(text, sub, colHex){
+  const c=document.createElement('canvas'); c.width=512; c.height=128;
+  const x=c.getContext('2d'); x.textAlign='center';
+  x.shadowColor='rgba(0,0,0,.85)'; x.shadowBlur=10;
+  x.font='700 44px "Zen Kaku Gothic New","Hiragino Kaku Gothic ProN",sans-serif';
+  x.fillStyle=colHex; x.fillText(text,256,58);
+  x.font='24px "Share Tech Mono",monospace'; x.fillStyle='rgba(170,182,200,.85)';
+  x.fillText(sub,256,98);
+  return new THREE.CanvasTexture(c);
+}
+const labelGroup = new THREE.Group(); scene.add(labelGroup);
+CLUSTERS.forEach((cl,ci)=>{
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map:labelTex(cl.ind, cl.count+' 社', cl.colHex),
+    transparent:true, opacity:.9, depthWrite:false, depthTest:false}));
+  const w = 15 + Math.sqrt(Math.max(cl.count,20))*0.55;
+  sp.position.set(cl.cx, cl.cy + 5 + Math.sqrt(Math.max(cl.count,20))*0.5, cl.cz);
+  sp.scale.set(w, w/4, 1); sp.renderOrder = 10; sp.userData.ci = ci;
+  labelGroup.add(sp);
+});
+
+/* --- 恒星 Points（カスタムシェーダー） --- */
+const N = STARS.length;
+const pos = new Float32Array(N*3), aColor = new Float32Array(N*3),
+      aSize = new Float32Array(N), aBright = new Float32Array(N), aPulse = new Float32Array(N);
+/* 大きさ = 時価総額（対数）。無い星は従業員数で代替 */
+function sizeOf(s){
+  if(s.mktcap) return THREE.MathUtils.clamp(1.1 + (Math.log10(s.mktcap)-0.8)*1.45, 1.1, 8.6);
+  return 1.6 + Math.log10(s.empl||300)*0.85;
+}
+STARS.forEach((s,i)=>{ pos[i*3]=s.x; pos[i*3+1]=s.y; pos[i*3+2]=s.z;
+  aSize[i] = sizeOf(s); });
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+starGeo.setAttribute('aColor', new THREE.BufferAttribute(aColor,3));
+starGeo.setAttribute('aSize',  new THREE.BufferAttribute(aSize,1));
+starGeo.setAttribute('aBright',new THREE.BufferAttribute(aBright,1));
+starGeo.setAttribute('aPulse', new THREE.BufferAttribute(aPulse,1));
+const starMat = new THREE.ShaderMaterial({
+  transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+  uniforms:{ uTime:{value:0} },
+  vertexShader:`
+    attribute vec3 aColor; attribute float aSize, aBright, aPulse;
+    varying vec3 vC; varying float vB;
+    uniform float uTime;
+    void main(){
+      vC=aColor;
+      float p = aPulse>0.5 ? (0.78+0.5*abs(sin(uTime*2.4+position.x))) : 1.0;
+      vB=aBright*p;
+      vec4 mv = modelViewMatrix*vec4(position,1.0);
+      gl_PointSize = clamp(aSize*p*(340.0/-mv.z), 1.0, 46.0);
+      gl_Position = projectionMatrix*mv;
+    }`,
+  fragmentShader:`
+    varying vec3 vC; varying float vB;
+    void main(){
+      float d = length(gl_PointCoord-vec2(0.5));
+      if(d>0.5) discard;
+      float halo = smoothstep(0.5,0.05,d);
+      float core = smoothstep(0.16,0.0,d);
+      vec3 col = vC*(halo*0.55+core*1.5)*vB + vec3(1.0)*core*vB*0.35;
+      gl_FragColor = vec4(col, (halo*0.85+core)*min(vB*1.4,1.0));
+    }`
+});
+const starsObj = new THREE.Points(starGeo, starMat);
+scene.add(starsObj);
+
+/* --- モード別の色・輝度計算 --- */
+let MODE='visible';
+const tmpC = new THREE.Color(), GRAY = new THREE.Color('#5b6678'),
+      HZC = new THREE.Color('#52e09a'), DGC = new THREE.Color('#c9a7ff');
+function paint(){
+  for(let i=0;i<N;i++){
+    const s = STARS[i]; const base = CLUSTERS[s.ci].col;
+    let c = tmpC.copy(base), b=0.5, pulse=0;
+    if(MODE==='visible'){
+      b = 0.14 + Math.pow(s.mass/100,1.35)*1.05;          // 明るさ = 優良企業度
+    } else if(MODE==='sensor'){
+      b = 0.10 + Math.pow(s.mass/100,1.6)*1.15;
+      if(s.dg){ c = tmpC.copy(DGC); b = 0.9+s.mass/100*0.6; pulse=1; }
+    } else { // hz
+      if(!ship.calibrated){ b = 0.18+(s.mass/100)*0.4; }
+      else { const h = habitable(s);
+        if(h.ok){ c = tmpC.copy(HZC).lerp(base,0.25); b = 0.55+(s.mass/100)*0.8; pulse = s.dg?1:0; }
+        else { c = tmpC.copy(GRAY); b = 0.10; } }
+    }
+    aColor[i*3]=c.r; aColor[i*3+1]=c.g; aColor[i*3+2]=c.b;
+    aBright[i]=b; aPulse[i]=pulse;
+  }
+  starGeo.attributes.aColor.needsUpdate = true;
+  starGeo.attributes.aBright.needsUpdate = true;
+  starGeo.attributes.aPulse.needsUpdate = true;
+}
+paint();
+
+/* --- 選択ハロー / 航路 --- */
+function ringTex(){
+  const c=document.createElement('canvas'); c.width=c.height=128; const x=c.getContext('2d');
+  x.strokeStyle='rgba(255,200,120,.95)'; x.lineWidth=4; x.beginPath(); x.arc(64,64,52,0,7); x.stroke();
+  x.strokeStyle='rgba(255,200,120,.3)'; x.lineWidth=10; x.beginPath(); x.arc(64,64,44,0,7); x.stroke();
+  return new THREE.CanvasTexture(c); }
+const halo = new THREE.Sprite(new THREE.SpriteMaterial({map:ringTex(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+halo.visible=false; halo.scale.set(7,7,1); scene.add(halo);
+const routeGroup = new THREE.Group(); scene.add(routeGroup);
+function clearRoutes(){ while(routeGroup.children.length){ const o=routeGroup.children.pop(); o.geometry&&o.geometry.dispose(); o.material&&o.material.dispose(); } }
+function drawRoute(a,b,color,op){
+  const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a.x,a.y,a.z), new THREE.Vector3(b.x,b.y,b.z)]);
+  routeGroup.add(new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false})));
+}
+
+/* --- カメラ制御（自作オービット + 慣性） --- */
+const cam = { theta:0.9, phi:1.18, r:240, tx:0, ty:0, tz:0,
+              gtheta:0.9, gphi:1.18, gr:240, gtx:0, gty:0, gtz:0 };
+function applyCam(){
+  cam.theta += (cam.gtheta-cam.theta)*0.085; cam.phi += (cam.gphi-cam.phi)*0.085;
+  cam.r += (cam.gr-cam.r)*0.085;
+  cam.tx += (cam.gtx-cam.tx)*0.075; cam.ty += (cam.gty-cam.ty)*0.075; cam.tz += (cam.gtz-cam.tz)*0.075;
+  const sp=Math.sin(cam.phi);
+  camera.position.set(cam.tx+cam.r*sp*Math.cos(cam.theta), cam.ty+cam.r*Math.cos(cam.phi), cam.tz+cam.r*sp*Math.sin(cam.theta));
+  camera.lookAt(cam.tx,cam.ty,cam.tz);
+}
+let dragging=false, moved=0, lx=0, ly=0;
+const pointers = new Map(); let pinchD=0;
+canvas.addEventListener('pointerdown',e=>{ canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId,[e.clientX,e.clientY]);
+  if(pointers.size===1){ dragging=true; moved=0; lx=e.clientX; ly=e.clientY; canvas.classList.add('dragging'); }
+  if(pointers.size===2){ const p=[...pointers.values()]; pinchD=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]); }
+});
+canvas.addEventListener('pointermove',e=>{
+  if(pointers.has(e.pointerId)) pointers.set(e.pointerId,[e.clientX,e.clientY]);
+  if(pointers.size===2){ const p=[...pointers.values()]; const d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);
+    if(pinchD>0){ cam.gr=THREE.MathUtils.clamp(cam.gr*(pinchD/d),12,520); } pinchD=d; moved=99; return; }
+  if(!dragging) return;
+  const dx=e.clientX-lx, dy=e.clientY-ly; moved+=Math.abs(dx)+Math.abs(dy);
+  cam.gtheta += dx*0.0042; cam.gphi = THREE.MathUtils.clamp(cam.gphi - dy*0.0036, 0.2, Math.PI-0.2);
+  lx=e.clientX; ly=e.clientY; hideTip();
+});
+function endPointer(e){ pointers.delete(e.pointerId);
+  if(pointers.size<2) pinchD=0;
+  if(pointers.size===0){ canvas.classList.remove('dragging');
+    if(dragging && moved<7) pick(e.clientX,e.clientY); dragging=false; } }
+canvas.addEventListener('pointerup',endPointer);
+canvas.addEventListener('pointercancel',endPointer);
+canvas.addEventListener('wheel',e=>{ e.preventDefault();
+  cam.gr=THREE.MathUtils.clamp(cam.gr*(1+Math.sign(e.deltaY)*0.09),12,520); },{passive:false});
+
+/* --- ピッキング --- */
+const ray = new THREE.Raycaster(); const ndc = new THREE.Vector2();
+function castStar(x,y){
+  ndc.x=(x/innerWidth)*2-1; ndc.y=-(y/innerHeight)*2+1;
+  ray.setFromCamera(ndc,camera);
+  ray.params.Points.threshold = Math.max(0.7, cam.r*0.012);
+  const hits = ray.intersectObject(starsObj);
+  if(!hits.length) return null;
+  hits.sort((a,b)=>a.distanceToRay-b.distanceToRay || a.distance-b.distance);
+  return STARS[hits[0].index];
+}
+function flyToCluster(ci){
+  const cl = CLUSTERS[ci];
+  cam.gtx=cl.cx; cam.gty=cl.cy; cam.gtz=cl.cz;
+  cam.gr = Math.max(40, 16+Math.sqrt(Math.max(cl.count,20))*1.6);
+}
+function pick(x,y){
+  if(labelGroup.visible){
+    ndc.x=(x/innerWidth)*2-1; ndc.y=-(y/innerHeight)*2+1;
+    ray.setFromCamera(ndc,camera);
+    const lh = ray.intersectObjects(labelGroup.children);
+    if(lh.length){ flyToCluster(lh[0].object.userData.ci); return; }
+  }
+  const s=castStar(x,y); if(s) selectStar(s);
+}
+
+/* --- ホバーツールチップ（精密ポインタのみ） --- */
+const tip=document.getElementById('tip');
+function hideTip(){ tip.style.display='none'; }
+if(matchMedia('(pointer:fine)').matches){
+  let last=0;
+  canvas.addEventListener('pointermove',e=>{
+    if(dragging || performance.now()-last<70) return; last=performance.now();
+    const s=castStar(e.clientX,e.clientY);
+    if(s){ tip.innerHTML=`<span class="tn">${s.name}</span><br><span class="ti">${s.ind} ／ 優良度:${s.mass}${s.mktcap?' ／ '+fmtCap(s.mktcap):''}${s.dg?' ◆暗黒巨星':''}</span>`;
+      tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+10)+'px'; }
+    else hideTip();
+  });
+}
+
+/* --- アニメーションループ --- */
+const clock = new THREE.Clock();
+function resize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight); }
+addEventListener('resize',resize); resize();
+(function tick(){
+  requestAnimationFrame(tick);
+  starMat.uniforms.uTime.value = clock.getElapsedTime();
+  if(!dragging && pointers.size===0) cam.gtheta += 0.00035; // 微速の銀河自転
+  applyCam();
+  // 業種ラベルは俯瞰時のみ表示（接近すると消える）
+  const lo = THREE.MathUtils.clamp((cam.r-34)/70, 0, 0.92);
+  labelGroup.visible = lo>0.03;
+  if(labelGroup.visible) labelGroup.children.forEach(s=>s.material.opacity=lo);
+  if(halo.visible){ const k=1+Math.sin(clock.elapsedTime*3)*0.08; halo.scale.set(7*k,7*k,1); }
+  renderer.render(scene,camera);
+})();
+
+/* =====================================================================
+   UI ロジック
+===================================================================== */
+const $ = id=>document.getElementById(id);
+const fmtMan = v => v>=1 ? (Math.round(v*10)/10).toLocaleString('ja-JP') : (Math.round(v*10)/10);
+const yen = v => Math.round(v*10000).toLocaleString('ja-JP');
+
+/* --- BOOT --- */
+const boot=$('boot');
+document.querySelectorAll('.boot-line').forEach(el=>{
+  setTimeout(()=>el.classList.add('on'), 200+ +el.dataset.d); });
+function exitBoot(){ boot.classList.add('done');
+  setTimeout(showDailyDG, 1600); }
+$('boot-skip').addEventListener('click',exitBoot);
+setTimeout(exitBoot, 2600);
+
+/* --- 今日の暗黒巨星 --- */
+function showDailyDG(){
+  if(!DARK_GIANTS.length) return;
+  const s = DARK_GIANTS[(new Date().getDate()*7)%DARK_GIANTS.length];
+  $('toast-name').textContent = `${s.name}（${s.ind}）— 優良度${s.mass}・知名度${Math.round(s.albedo*100)}%`;
+  $('toast').classList.add('on');
+  $('toast-go').onclick=()=>{ $('toast').classList.remove('on'); setMode('sensor'); selectStar(s); };
+  setTimeout(()=>$('toast').classList.remove('on'), 9000);
+}
+
+/* --- モード切替 --- */
+const MODE_LABEL={visible:'可視光観測（優良企業度）', sensor:'深宇宙センサー（暗黒巨星走査）', hz:'HZレンズ（入植判定）'};
+const LEGEND_LABEL={visible:'大きさ = 時価総額 ／ 明るさ = 優良企業度',
+  sensor:'明るさ = 優良企業度 ／ <span style="color:#c9a7ff">◆紫 = 暗黒巨星（高優良度×低知名度）</span>',
+  hz:'<span style="color:var(--hz)">緑 = あなたが暮らせる星</span> ／ 灰 = HZ圏外'};
+function setMode(m){
+  MODE=m;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  $('st-mode').textContent='MODE: '+MODE_LABEL[m];
+  $('legend-mode').innerHTML=LEGEND_LABEL[m];
+  if(m==='sensor'){ const sw=$('sweep'); sw.classList.remove('go'); void sw.offsetWidth; sw.classList.add('go'); }
+  if(m==='hz' && !ship.calibrated){ openShip(); }
+  paint();
+}
+document.querySelectorAll('.mode-btn').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+
+/* --- 探査船設定 --- */
+const shipmodal=$('shipmodal');
+function openShip(){ shipmodal.classList.add('on'); updateGravReadout(); }
+$('ship-btn').addEventListener('click',openShip);
+$('ship-cancel').addEventListener('click',()=>shipmodal.classList.remove('on'));
+function segInit(id, set){ $(id).querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+  $(id).querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active'); set(parseFloat(b.dataset.v)); updateGravReadout(); })); }
+segInit('f-region', v=>ship.regionF=v);
+segInit('f-family', v=>ship.family=v);
+[['f-age','o-age',v=>{ship.age=v;return v+'歳'}],
+ ['f-rent','o-rent',v=>{ship.rent=v;return v.toFixed(1)+'万円'}],
+ ['f-save','o-save',v=>{ship.save=v;return v.toFixed(1)+'万円'}]].forEach(([fi,oi,fn])=>{
+  $(fi).addEventListener('input',e=>{ $(oi).textContent=fn(parseFloat(e.target.value)); updateGravReadout(); });
+});
+function updateGravReadout(){
+  const lc = livingCost();
+  $('grav-readout').innerHTML =
+    `重力負荷（生命維持コスト）: <b>${lc.toFixed(1)}万円/月</b><br>`+
+    `必要手取り: 月 ${lc.toFixed(1)}万円 以上 ＝ 年 約${Math.round(lc*12)}万円`;
+}
+$('ship-apply').addEventListener('click',()=>{
+  ship.calibrated=true; shipmodal.classList.remove('on');
+  let cnt=0; STARS.forEach(s=>{ if(habitable(s).ok) cnt++; });
+  $('st-grav').textContent = livingCost().toFixed(1)+'万/月';
+  $('st-hz').textContent = cnt.toLocaleString()+' / '+TOTAL.toLocaleString()+' 星';
+  setMode('hz');
+  say(`HZレンズを較正しました。あなたの重力負荷 ${livingCost().toFixed(1)}万円/月 に対し、入植可能な星は <b style="color:var(--hz)">${cnt.toLocaleString()}個</b>。緑に呼吸する星々があなたの宇宙です。家族や家賃の条件を変えると、銀河の緑がリアルタイムに伸縮します。`);
+});
+
+/* --- 星の選択 → 軌道投入 --- */
+let SELECTED=null;
+function selectStar(s){
+  SELECTED=s;
+  halo.visible=true; halo.position.set(s.x,s.y,s.z);
+  // フライト
+  cam.gtx=s.x; cam.gty=s.y; cam.gtz=s.z; cam.gr=24;
+  renderPanel(s);
+  $('panel').classList.add('open');
+  // 隣接航路を描画
+  clearRoutes();
+  neighborsOf(s).forEach(n=>drawRoute(s,n.star,n.cross?0x7dd3c8:0xffb454,0.32));
+}
+$('panel-close').addEventListener('click',()=>{ $('panel').classList.remove('open'); halo.visible=false; clearRoutes(); });
+
+function neighborsOf(s){
+  const same=[], cross=[];
+  for(const o of STARS){ if(o===s) continue;
+    const d=(o.x-s.x)**2+(o.y-s.y)**2+(o.z-s.z)**2;
+    if(o.ci===s.ci) same.push([d,o]); else if(d<2600) cross.push([d,o]); }
+  same.sort((a,b)=>a[0]-b[0]); cross.sort((a,b)=>a[0]-b[0]);
+  const types=['同業種・近傍','同業種・近傍','同業種・近傍','業種横断・近傍'];
+  const out=[];
+  same.slice(0,4).forEach(([d,o])=>out.push({star:o,type:'同業種',cross:false}));
+  cross.slice(0,2).forEach(([d,o])=>out.push({star:o,type:'近傍異業種',cross:true}));
+  return out;
+}
+
+function kv(k,v,sub){ return `<div class="kv"><div class="k">${k}</div><div class="v">${v}${sub?` <small>${sub}</small>`:''}</div></div>`; }
+function nv(v,suf,plus){ return v==null ? '<small style="color:var(--txt-dim)">—</small>'
+  : (plus&&v>0?'+':'')+v+`<small>${suf}</small>`; }
+function renderPanel(s){
+  $('p-name').textContent=s.name;
+  $('p-meta').innerHTML=`<span>${s.ind}</span>`+
+    (s.code?`<span style="font-family:var(--mono)">${s.code}</span>`:'')+
+    (s.market?`<span>${s.market}</span>`:'')+
+    `<span>従業員 ${s.empl?s.empl.toLocaleString()+'名':'—'}</span>`+
+    (s.dg?`<span class="badge dg">◆ 暗黒巨星</span>`:'')+
+    (s.niche?`<span class="badge niche">ニッチトップ記述</span>`:'');
+  $('p-stats').innerHTML =
+    kv('時価総額（概算）', s.mktcap?fmtCap(s.mktcap):'<small style="color:var(--txt-dim)">—</small>') +
+    kv('平均年収（推定）', nv(s.salary,'万円')) +
+    kv('平均年齢 / 勤続', `${s.age!=null?s.age+'<small>歳</small>':'—'} / ${s.tenure!=null?s.tenure+'<small>年</small>':'—'}`) +
+    kv('営業利益率', nv(s.margin,'%')) +
+    kv('売上成長率(前年比)', nv(s.growth,'%',true));
+  $('p-mass').textContent = s.mass+' / 100';
+  $('p-albedo').textContent = Math.round(s.albedo*100)+'%';
+  requestAnimationFrame(()=>{ $('m-mass').style.width=s.mass+'%'; $('m-albedo').style.width=Math.round(s.albedo*100)+'%'; });
+  $('p-dg-note').style.display = s.dg?'block':'none';
+  $('p-atmo').innerHTML =
+    kv('男性育休取得率', nv(s.papa,'%')) +
+    kv('女性管理職比率', nv(s.fkanri,'%')) +
+    kv('男女間賃金差異', nv(s.wagegap,'%')) +
+    kv('恒星風（離職推定）', s.tenure==null?'<small style="color:var(--txt-dim)">—</small>':(s.tenure>=14?'微弱':s.tenure>=8?'標準':'<span style="color:var(--warn)">強</span>'));
+  // HZ判定
+  const hzEl=$('p-hz');
+  if(!ship.calibrated){
+    hzEl.className='hz-verdict';
+    hzEl.innerHTML=`<div class="hz-big" style="color:var(--txt-dim)">UNCALIBRATED</div>
+      <div class="hz-sub">探査船が未設定です。あなたの生活条件（重力）を設定すると、この星で暮らせるか判定します。</div>
+      <button class="cta" onclick="document.getElementById('ship-btn').click()" style="margin-top:10px">⨂ 探査船を設定する</button>`;
+  } else {
+    const h=habitable(s); const diff=h.monthly-h.need;
+    hzEl.className='hz-verdict '+(h.ok?'ok':'ng');
+    hzEl.innerHTML=`<div class="hz-big">${h.ok?'HABITABLE — 入植可能':'OUT OF ZONE — 圏外'}</div>
+      <div class="hz-sub">想定手取り 月${h.monthly.toFixed(1)}万円 ／ 必要 月${h.need.toFixed(1)}万円<br>
+      生命維持マージン <b style="color:${h.ok?'var(--hz)':'var(--warn)'}">${diff>=0?'+':''}${diff.toFixed(1)}万円/月</b>（${ship.age}歳・現条件）</div>`;
+  }
+  $('descent').style.display='none'; $('descent').innerHTML='';
+  // 航路
+  $('p-routes').innerHTML = neighborsOf(s).map(n=>
+    `<div class="route"><span class="r-type">${n.type}</span><span class="r-name">${n.star.name}${n.star.dg?' ◆':''}<br><small style="color:var(--txt-dim);font-size:10px">${n.star.ind} ／ 優良度:${n.star.mass}${n.star.mktcap?' ／ '+fmtCap(n.star.mktcap):''}</small></span>
+     <button class="r-go" data-id="${n.star.id}">WARP ▸</button></div>`).join('');
+  $('p-routes').querySelectorAll('.r-go').forEach(b=>b.addEventListener('click',()=>selectStar(STARS[+b.dataset.id])));
+  // 外部観測所（OpenWork / ONE CAREER / 転職会議）
+  renderExt(s);
+  $('panel-body').scrollTop=0;
+}
+
+/* --- 外部観測所: 評価スコア表示 + 各サイトへの観測リンク --- */
+function renderExt(s){
+  const q = encodeURIComponent(s.name);
+  const links = [
+    ['OpenWork',  s.ow, `https://www.openwork.jp/company_list?src_str=${q}`],
+    ['ONE CAREER',s.oc, `https://www.google.com/search?q=${encodeURIComponent('site:onecareer.jp '+s.name)}`],
+    ['転職会議',   s.jt, `https://www.google.com/search?q=${encodeURIComponent('site:jobtalk.jp '+s.name)}`]
+  ];
+  const ra = ratingAvgOf(s);
+  $('p-ext').innerHTML =
+    (ra!=null
+      ? `<div class="kv" style="margin-bottom:10px"><div class="k">外部観測 総合評価（取込済スコアの平均）</div><div class="v">★ ${ra.toFixed(1)}<small> / 5.0 — 優良企業度に反映済</small></div></div>`
+      : `<div class="ext-note" style="margin-bottom:8px">外部評価スコア未取込。ratings.csv を取り込むと優良企業度（働きやすさ30pt）に反映されます。</div>`)
+    + links.map(([nm,v,url])=>
+      `<div class="route"><span class="r-type">${nm}</span><span class="r-name">${v!=null?'★ '+Number(v).toFixed(1)+' <small style="color:var(--txt-dim)">/ 5.0</small>':'<small style="color:var(--txt-dim)">スコア未取込</small>'}</span>
+       <a class="r-go" style="text-decoration:none" href="${url}" target="_blank" rel="noopener">開く ↗</a></div>`).join('')
+    + `<div class="ext-note" style="margin-top:10px">※ 外部評価は各サイトの利用規約に従い、リンク先での確認、または規約に沿って取得した取込データのみを表示します。${USING_REAL?'':'（デモ表示中のスコアは架空値です）'}</div>`;
+}
+
+/* --- 降下シミュレーション --- */
+$('descent-btn').addEventListener('click',()=>{
+  if(!SELECTED) return;
+  const s=SELECTED;
+  const g = ship.calibrated ? salaryAtAge(s,ship.age)*ship.regionF : s.salary;
+  const t = tedori(g, ship.family);
+  const rows = [
+    ['額面エネルギー（想定年収）', '¥'+yen(g), ''],
+    ['大気摩擦 — 社会保険料', '−¥'+yen(t.si), 'minus'],
+    ['大気摩擦 — 所得税', '−¥'+yen(t.it), 'minus'],
+    ['大気摩擦 — 住民税', '−¥'+yen(t.rt), 'minus'],
+    ['着陸 — 手取り（年）', '¥'+yen(t.net)+`　<small style="color:var(--txt-dim)">月 ¥${yen(t.net/12)}</small>`, 'final'],
+  ];
+  const ages = ship.calibrated ? [ship.age, ship.age+5, ship.age+10, 45].filter((v,i,a)=>a.indexOf(v)===i && v<=59)
+                               : [28,33,38,45];
+  const proj = ages.map(a=>{ const gg=salaryAtAge(s,a)*(ship.calibrated?ship.regionF:1);
+    return {a, net:tedori(gg,ship.family).net}; });
+  const maxNet = Math.max(...proj.map(p=>p.net));
+  const d=$('descent');
+  d.innerHTML = rows.map(r=>`<div class="d-row ${r[2]}"><span class="dk">${r[0]}</span><span class="dv">${r[1]}</span></div>`).join('')
+    + `<div style="font-family:var(--mono);font-size:10px;color:var(--amber-dim);letter-spacing:.2em;margin:14px 0 6px">COLONY FORECAST — 手取り推移（概算）</div>`
+    + `<div class="proj">`+proj.map(p=>`<div class="pcol"><div class="pbar"><i data-h="${Math.round(p.net/maxNet*100)}"></i></div><div class="pv">${Math.round(p.net)}万</div><div class="pk">${p.a}歳</div></div>`).join('')+`</div>`
+    + `<div style="font-size:10px;color:var(--txt-dim);margin-top:10px;line-height:1.7">※ 2026年度税制の概算モデル（社保・所得税・住民税）。${USING_REAL?'EDINET開示情報に基づく推計値であり、実際の給与・手取りを保証するものではありません。':'デモ用架空データであり実在の給与を示しません。'}</div>`;
+  d.style.display='block';
+  const rowEls=d.querySelectorAll('.d-row');
+  rowEls.forEach((el,i)=>setTimeout(()=>el.classList.add('on'), 200+i*420));
+  setTimeout(()=>d.querySelectorAll('.pbar i').forEach(b=>b.style.height=b.dataset.h+'%'), 200+rowEls.length*420);
+});
+
+/* --- シェア --- */
+$('share-btn').addEventListener('click',async()=>{
+  const s=SELECTED; if(!s) return;
+  let txt=`◆ 暗黒巨星を観測しました\n${s.name}（${s.ind}）\n優良企業度 ${s.mass}/100・知名度 ${Math.round(s.albedo*100)}%${s.mktcap?'・時価総額 '+fmtCap(s.mktcap):''}`;
+  if(!s.dg) txt=`🔭 ${s.name}（${s.ind}）を観測\n優良企業度 ${s.mass}/100${s.mktcap?'・時価総額 '+fmtCap(s.mktcap):''}`;
+  if(ship.calibrated){ const h=habitable(s); txt+=`\nHZ判定: ${h.ok?'入植可能 🟢':'圏外'}（手取り月${h.monthly.toFixed(1)}万 vs 必要${h.need.toFixed(1)}万）`; }
+  txt+= USING_REAL ? '\n#STELLARC #暗黒巨星みつけた（EDINET開示に基づく推計）'
+                   : '\n#STELLARC #暗黒巨星みつけた（プロトタイプ・架空データ）';
+  try{ if(navigator.share){ await navigator.share({text:txt}); return; } }catch(e){}
+  try{ await navigator.clipboard.writeText(txt); say('観測記録をクリップボードに転送しました。Xに貼り付けて発信できます。'); }
+  catch(e){ say('シェアテキスト:<br>'+txt.replace(/\n/g,'<br>')); }
+});
+
+/* --- AI管制官 --- */
+const log=$('comm-log');
+function say(html, targets){
+  const m=document.createElement('div'); m.className='comm-msg';
+  m.innerHTML=`<span class="who">CONTROL — 管制官</span>${html}`;
+  if(targets&&targets.length){
+    const w=document.createElement('div'); w.className='targets';
+    targets.forEach(t=>{ const b=document.createElement('button'); b.className='target-chip';
+      b.textContent=`▸ ${t.name}（優良度:${t.mass}）`; b.onclick=()=>selectStar(t); w.appendChild(b); });
+    m.appendChild(w);
+  }
+  log.appendChild(m);
+  while(log.children.length>2) log.removeChild(log.firstChild);
+  setTimeout(()=>{ if(m.parentNode && log.children.length>1 && m===log.firstChild) m.remove(); }, 26000);
+}
+const IND_KEYS=[[/it|アイティ|情報|通信|ソフト|web|エンジニア/i,'情報・通信業'],[/化学|素材|ケミカル/,'化学'],
+ [/食品|食べ物|フード/,'食料品'],[/機械|メーカー|ものづくり|製造/,'機械'],[/電機|電子|半導体/,'電気機器'],
+ [/商社|卸/,'卸売業'],[/薬|製薬|医療/,'医薬品'],[/建設|ゼネコン/,'建設業'],[/金融|銀行/,'銀行業'],
+ [/精密|計測/,'精密機器'],[/不動産/,'不動産業'],[/小売|販売/,'小売業'],[/物流|運輸|運送/,'陸運業']];
+function control(q){
+  if(!q.trim()) return;
+  const w={mass:1};
+  let indFilter=null, wantDG=false, wantHZ=ship.calibrated, wantBig=false;
+  if(/残業|ホワイト|働きやす|定時|ゆとり|落ち着/.test(q)){ w.tenure=2.2; w.papa=0.8; w.rating=1.5; }
+  if(/シェア|ニッチ|世界|トップ|独自|技術力/.test(q)){ w.niche=3; w.margin=1.2; }
+  if(/年収|給料|高収入|稼/.test(q)){ w.salary=2.4; }
+  if(/若|成長|ベンチャー|勢い/.test(q)){ w.growth=2; }
+  if(/安定|長く|堅実|潰れない/.test(q)){ w.margin=1.6; w.tenure=1.6; }
+  if(/大手|大企業|でかい|巨大/.test(q)){ wantBig=true; }
+  if(/隠れ|知らない|無名|マイナー|穴場|暗黒/.test(q)){ wantDG=true; }
+  if(/コミュ|営業|人と話|接客/.test(q)){ indFilter=['卸売業','サービス業','小売業','情報・通信業']; }
+  for(const [re,ind] of IND_KEYS) if(re.test(q)){ indFilter=[ind]; break; }
+  const scored=[];
+  for(const s of STARS){
+    if(indFilter && !indFilter.includes(s.ind)) continue;
+    if(wantDG && !s.dg) continue;
+    if(wantHZ && !habitable(s).ok) continue;
+    const ra = ratingAvgOf(s);
+    let sc = s.mass*(w.mass||0) + (s.tenure||0)*(w.tenure||0)*4 + (s.niche?60:0)*(w.niche?1:0)
+           + (s.salary||0)/12*(w.salary||0) + Math.max(s.growth||0,0)*(w.growth||0)*2.5
+           + (s.margin||0)*(w.margin||0)*2.5 + (s.papa||0)*(w.papa||0)*0.5
+           + (ra!=null?(ra-2.5)*12:0)*(w.rating||0)
+           + (wantBig&&s.mktcap?Math.log10(s.mktcap)*10:0)
+           + (wantDG?0:(1-s.albedo)*14);   // デフォルトでも知名度低めを少し優遇＝発見体験
+    scored.push([sc,s]);
+  }
+  scored.sort((a,b)=>b[0]-a[0]);
+  const top=scored.slice(0,3).map(x=>x[1]);
+  if(!top.length){ say('該当宙域に天体を検出できません。条件を少し緩めて再交信してください。'+(wantHZ?'（HZ圏内のみを走査しています — 探査船設定の変更も有効です）':'')); return; }
+  const t0=top[0];
+  const why=[];
+  if(w.niche&&t0.niche) why.push('ニッチトップ記述あり');
+  if(w.tenure&&t0.tenure!=null) why.push(`勤続${t0.tenure}年`);
+  if(w.salary) why.push(`推定年収${t0.salary}万円`);
+  if(t0.margin!=null) why.push(`営業利益率${t0.margin}%`);
+  if(ratingAvgOf(t0)!=null) why.push(`外部評価★${ratingAvgOf(t0).toFixed(1)}`);
+  if(t0.mktcap) why.push(`時価総額${fmtCap(t0.mktcap)}`);
+  if(t0.dg) why.push('暗黒巨星');
+  say(`走査完了 — 該当する星系を<b style="color:var(--amber)">${Math.min(scored.length,99)}件</b>検出。最有力は <b>${t0.name}</b>（${t0.ind}）。根拠: ${why.join('・')}${wantHZ?'。すべてあなたのHZ圏内です':''}。航路を表示します。`, top);
+  clearRoutes(); halo.visible=false;
+  for(let i=0;i<top.length-1;i++) drawRoute(top[i],top[i+1],0xffb454,0.5);
+  if(wantDG||top.some(s=>s.dg)) setMode('sensor');
+  selectStar(t0);
+}
+$('send-btn').addEventListener('click',()=>{ control($('comm-input').value); $('comm-input').value=''; });
+$('comm-input').addEventListener('keydown',e=>{ if(e.key==='Enter'){ control(e.target.value); e.target.value=''; }});
+
+/* --- 音声交信 --- */
+const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+if(SR){
+  const rec=new SR(); rec.lang='ja-JP'; rec.interimResults=false;
+  let listening=false;
+  $('mic-btn').addEventListener('click',()=>{
+    if(listening){ rec.stop(); return; }
+    try{ rec.start(); listening=true; $('mic-btn').classList.add('rec'); }catch(e){}
+  });
+  rec.onresult=e=>{ const t=e.results[0][0].transcript; $('comm-input').value=t; control(t); $('comm-input').value=''; };
+  rec.onend=()=>{ listening=false; $('mic-btn').classList.remove('rec'); };
+  rec.onerror=()=>{ listening=false; $('mic-btn').classList.remove('rec'); };
+}else{ $('mic-btn').style.display='none'; }
+
+/* --- 初期ステータス --- */
+$('st-grav').textContent='未較正'; $('st-hz').textContent='未較正';
+</script>
+</body>
+</html>

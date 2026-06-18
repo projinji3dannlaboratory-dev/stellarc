@@ -1,0 +1,18 @@
+# 秘密情報（絶対にコミットしない）
+.env
+.env.local
+*.key
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 取得時の中間生成物（site が使うのは stellarc_data.js のみ）
+stellarc_data.json
+cache/
+data_j.xls
+
+# OS
+Thumbs.db
+.DS_Store
