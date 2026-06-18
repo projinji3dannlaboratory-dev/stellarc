@@ -231,7 +231,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
 <div class="hud" id="legend">
   ドラッグ=旋回 ／ ホイール・ピンチ=接近<br>
   星をタップ=軌道投入 ／ 業種名をタップ=星雲へ<br>
-  <span id="legend-mode">大きさ = 時価総額（面積が比例・最大=100）／ 明るさ = 優良企業度（1〜100）</span>
+  <span id="legend-mode">大きさ = 時価総額（最大:最小 ≈ 10000:1）／ 明るさ = 優良企業度（1〜100）</span>
 </div>
 
 <div id="comm-log" aria-live="polite"></div>
@@ -509,11 +509,14 @@ const MAXCAP = STARS.reduce((m,s)=>Math.max(m, s.mktcap||0), 0) || 1;
 let _mmin=Infinity,_mmax=-Infinity;
 STARS.forEach(s=>{ if(s.mass<_mmin)_mmin=s.mass; if(s.mass>_mmax)_mmax=s.mass; });
 const MASS_MIN=_mmin, MASS_SPAN=Math.max(1,_mmax-_mmin);
+let _minScore=Infinity;
 STARS.forEach(s=>{
   s.sizeScore = s.mktcap ? s.mktcap/MAXCAP*100 : null;   // 0–100（最大企業=100に比例）
   s.qNorm  = (s.mass-MASS_MIN)/MASS_SPAN;                 // 0–1
   s.qScore = Math.round(1 + s.qNorm*99);                  // 1–100（最低=1・最高=100）
+  if(s.sizeScore!=null && s.sizeScore<_minScore) _minScore=s.sizeScore;
 });
+const MIN_SIZESCORE = isFinite(_minScore)?_minScore:1;
 { const b=document.getElementById('demo-badge');
   if(USING_REAL){ b.textContent='LIVE — EDINET'; b.style.color='var(--teal)'; b.style.borderColor='rgba(125,211,200,.45)'; }
   const c=document.getElementById('st-count'); if(c) c.textContent=TOTAL.toLocaleString('ja-JP'); }
@@ -613,12 +616,15 @@ const N = STARS.length;
 const pos = new Float32Array(N*3), aColor = new Float32Array(N*3),
       aSize = new Float32Array(N), aBright = new Float32Array(N), aPulse = new Float32Array(N);
 /* 大きさ = 時価総額（対数）。無い星は従業員数で代替 */
-// 見た目の大きさ = 時価総額。トップ企業は太陽のように巨大、小型株は小さな点。
-// 最大と最小の差を大きく取りつつ、規模スコア(最大=100)に対し単調増加。
-const SZ_FLOOR=0.55, SZ_MAX=34.0, SZ_EXP=0.62;
+// 見た目の大きさ = 時価総額。最大企業を太陽級に、最小企業を1px級に。
+// 最大:最小 ≈ 10000:1 になるよう、規模スコアを対数補間でサイズへ写像。
+const SZ_BIG=44.0, SIZE_RATIO=10000;
+const SZ_SMALL=SZ_BIG/SIZE_RATIO;
+const _logMin=Math.log(MIN_SIZESCORE), _logSpan=(Math.log(100)-_logMin)||1;
 function sizeOf(s){
-  if(s.sizeScore==null) return SZ_FLOOR*0.8;   // 時価総額データなし
-  return SZ_FLOOR + (SZ_MAX-SZ_FLOOR)*Math.pow(s.sizeScore/100, SZ_EXP);
+  if(s.sizeScore==null) return SZ_SMALL;       // 時価総額データなし → 最小
+  const f=(Math.log(s.sizeScore)-_logMin)/_logSpan;   // 0(最小)..1(最大)
+  return SZ_SMALL*Math.pow(SIZE_RATIO, f);            // 最小=SZ_SMALL, 最大=SZ_BIG
 }
 STARS.forEach((s,i)=>{ pos[i*3]=s.x; pos[i*3+1]=s.y; pos[i*3+2]=s.z;
   aSize[i] = sizeOf(s); });
@@ -640,7 +646,7 @@ const starMat = new THREE.ShaderMaterial({
       float p = aPulse>0.5 ? (0.78+0.5*abs(sin(uTime*2.4+position.x))) : 1.0;
       vB=aBright*p;
       vec4 mv = modelViewMatrix*vec4(position,1.0);
-      gl_PointSize = clamp(aSize*p*(340.0/-mv.z), 1.0, 110.0);
+      gl_PointSize = clamp(aSize*p*(340.0/-mv.z), 1.0, 240.0);
       gl_Position = projectionMatrix*mv;
     }`,
   fragmentShader:`
@@ -822,7 +828,7 @@ function showDailyDG(){
 
 /* --- モード切替 --- */
 const MODE_LABEL={visible:'可視光観測（優良企業度）', sensor:'深宇宙センサー（暗黒巨星走査）', hz:'HZレンズ（入植判定）'};
-const LEGEND_LABEL={visible:'大きさ = 時価総額（面積が比例・最大=100）／ 明るさ = 優良企業度（1〜100）',
+const LEGEND_LABEL={visible:'大きさ = 時価総額（最大:最小 ≈ 10000:1）／ 明るさ = 優良企業度（1〜100）',
   sensor:'明るさ = 優良企業度 ／ <span style="color:#c9a7ff">◆紫 = 暗黒巨星（高優良度×低知名度）</span>',
   hz:'<span style="color:var(--hz)">緑 = あなたが暮らせる星</span> ／ 灰 = HZ圏外'};
 function setMode(m){
