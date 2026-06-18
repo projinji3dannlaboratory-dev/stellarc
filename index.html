@@ -613,12 +613,12 @@ const N = STARS.length;
 const pos = new Float32Array(N*3), aColor = new Float32Array(N*3),
       aSize = new Float32Array(N), aBright = new Float32Array(N), aPulse = new Float32Array(N);
 /* 大きさ = 時価総額（対数）。無い星は従業員数で代替 */
-// 見た目の大きさ = 面積を時価総額に比例（=直径は規模スコアの平方根）。
-// これで「最大企業を100とした比例」を面積で表しつつ、小型株も点として視認できる。
-const SZ_FLOOR=1.0, SZ_MAX=13.0;
+// 見た目の大きさ = 時価総額。トップ企業は太陽のように巨大、小型株は小さな点。
+// 最大と最小の差を大きく取りつつ、規模スコア(最大=100)に対し単調増加。
+const SZ_FLOOR=0.55, SZ_MAX=34.0, SZ_EXP=0.62;
 function sizeOf(s){
   if(s.sizeScore==null) return SZ_FLOOR*0.8;   // 時価総額データなし
-  return SZ_FLOOR + (SZ_MAX-SZ_FLOOR)*Math.sqrt(s.sizeScore/100);
+  return SZ_FLOOR + (SZ_MAX-SZ_FLOOR)*Math.pow(s.sizeScore/100, SZ_EXP);
 }
 STARS.forEach((s,i)=>{ pos[i*3]=s.x; pos[i*3+1]=s.y; pos[i*3+2]=s.z;
   aSize[i] = sizeOf(s); });
@@ -640,7 +640,7 @@ const starMat = new THREE.ShaderMaterial({
       float p = aPulse>0.5 ? (0.78+0.5*abs(sin(uTime*2.4+position.x))) : 1.0;
       vB=aBright*p;
       vec4 mv = modelViewMatrix*vec4(position,1.0);
-      gl_PointSize = clamp(aSize*p*(340.0/-mv.z), 1.0, 46.0);
+      gl_PointSize = clamp(aSize*p*(340.0/-mv.z), 1.0, 110.0);
       gl_Position = projectionMatrix*mv;
     }`,
   fragmentShader:`
@@ -666,15 +666,15 @@ function paint(){
     const s = STARS[i]; const base = CLUSTERS[s.ci].col;
     let c = tmpC.copy(base), b=0.5, pulse=0;
     if(MODE==='visible'){
-      b = 0.12 + s.qNorm*1.28;                            // 明るさ = 優良ポイント（1→100に比例）
+      b = 0.05 + Math.pow(s.qNorm,1.5)*1.85;              // 明るさ = 優良ポイント（低=暗 / 高=強く光る）
     } else if(MODE==='sensor'){
-      b = 0.10 + s.qNorm*1.2;
-      if(s.dg){ c = tmpC.copy(DGC); b = 1.0+s.qNorm*0.5; pulse=1; }
+      b = 0.05 + Math.pow(s.qNorm,1.35)*1.55;
+      if(s.dg){ c = tmpC.copy(DGC); b = 1.05+s.qNorm*0.55; pulse=1; }
     } else { // hz
-      if(!ship.calibrated){ b = 0.16+s.qNorm*0.7; }
+      if(!ship.calibrated){ b = 0.08+Math.pow(s.qNorm,1.3)*1.0; }
       else { const h = habitable(s);
-        if(h.ok){ c = tmpC.copy(HZC).lerp(base,0.25); b = 0.5+s.qNorm*0.85; pulse = s.dg?1:0; }
-        else { c = tmpC.copy(GRAY); b = 0.10; } }
+        if(h.ok){ c = tmpC.copy(HZC).lerp(base,0.25); b = 0.42+s.qNorm*1.0; pulse = s.dg?1:0; }
+        else { c = tmpC.copy(GRAY); b = 0.08; } }
     }
     aColor[i*3]=c.r; aColor[i*3+1]=c.g; aColor[i*3+2]=c.b;
     aBright[i]=b; aPulse[i]=pulse;
