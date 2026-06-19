@@ -168,52 +168,38 @@ def load_ratings():
     print(f"  ratings.csv: {len(out)} 社の外部評価を取込")
     return out
 
-# ---- J-Quants（JPX公式）: 最新終値で時価総額を再計算するための株価取得 ----
-JQ_BASE = "https://api.jquants.com/v1"
+# ---- J-Quants V2（JPX公式）: APIキー認証で最新終値を取得し時価総額を再計算 ----
+# V2は恒久APIキー（x-api-keyヘッダー）。ダッシュボードで発行。無料プランは約12週遅れ。
+JQ_BASE = "https://api.jquants.com/v2"
 
-def jquants_idtoken_from_refresh(refresh_token):
-    """リフレッシュトークン（J-Quantsの実質APIキー・有効1週間）→ IDトークン。"""
-    r = requests.post(f"{JQ_BASE}/token/auth_refresh",
-                      params={"refreshtoken": refresh_token}, timeout=60)
-    r.raise_for_status()
-    return r.json()["idToken"]
-
-def jquants_id_token(mail, pw):
-    """メール+パスワード → リフレッシュトークン → IDトークン（毎回新規発行＝無人自動化向き）。"""
-    r = requests.post(f"{JQ_BASE}/token/auth_user",
-                      json={"mailaddress": mail, "password": pw}, timeout=60)
-    r.raise_for_status()
-    return jquants_idtoken_from_refresh(r.json()["refreshToken"])
-
-def _jq_daily(headers, date):
-    out, pk = [], None
-    while True:
-        params = {"date": date}
-        if pk:
-            params["pagination_key"] = pk
-        r = requests.get(f"{JQ_BASE}/prices/daily_quotes", headers=headers, params=params, timeout=60)
-        if r.status_code != 200:
-            return out
-        j = r.json()
-        out += j.get("daily_quotes", [])
-        pk = j.get("pagination_key")
-        if not pk:
-            break
-        time.sleep(0.2)
-    return out
-
-def jquants_latest_closes(idtoken):
-    """無料プランは約12週遅れ。今日-90日から遡って、データのある直近営業日の終値を取得。"""
+def jquants_latest_closes(apikey):
+    """今日-90日（無料プランの12週遅れの外側）から遡り、データのある直近営業日の終値を取得。
+    /v2/equities/bars/daily : 項目 Code（銘柄コード）/ C（終値）。返却は data 配列 + pagination_key。"""
     import datetime as dt
-    h = {"Authorization": "Bearer " + idtoken}
-    for back in range(88, 120):
-        d = (dt.date.today() - dt.timedelta(days=back)).strftime("%Y%m%d")
-        rows = _jq_daily(h, d)
+    h = {"x-api-key": apikey}
+    for back in range(90, 125):
+        d = (dt.date.today() - dt.timedelta(days=back)).strftime("%Y-%m-%d")
+        rows, pk = [], None
+        while True:
+            params = {"date": d}
+            if pk:
+                params["pagination_key"] = pk
+            r = requests.get(f"{JQ_BASE}/equities/bars/daily", headers=h, params=params, timeout=60)
+            if r.status_code == 403:
+                raise RuntimeError("APIキーが無効/期限切れ: " + str(r.json().get("message", r.status_code)))
+            if r.status_code != 200:
+                break  # データ無し（休場等）→ さらに過去の日付へ
+            j = r.json()
+            rows += j.get("data", [])
+            pk = j.get("pagination_key")
+            if not pk:
+                break
+            time.sleep(0.2)
         if rows:
             closes = {}
             for q in rows:
                 code = q.get("Code")
-                c = q.get("Close") or q.get("AdjustmentClose")
+                c = q.get("C") or q.get("AdjC")
                 if code and c:
                     closes[str(code)] = float(c)          # 5桁コード
                     closes[str(code)[:4]] = float(c)      # 4桁フォールバック
@@ -287,15 +273,11 @@ def main():
 
     # ---- J-Quants 最新終値で時価総額を再計算（環境変数があれば）----
     price_date = None
-    mail = os.environ.get("JQUANTS_MAILADDRESS", "").strip()
-    pw = os.environ.get("JQUANTS_PASSWORD", "").strip()
-    rtoken = os.environ.get("JQUANTS_REFRESH_TOKEN", "").strip()
-    if rtoken or (mail and pw):
-        how = "リフレッシュトークン" if rtoken else "メール+パスワード"
-        print(f"[3.5/4] J-Quants（{how}）から最新終値を取得し時価総額を再計算")
+    apikey = os.environ.get("JQUANTS_API_KEY", "").strip()
+    if apikey:
+        print("[3.5/4] J-Quants V2（APIキー）から最新終値を取得し時価総額を再計算")
         try:
-            idt = jquants_idtoken_from_refresh(rtoken) if rtoken else jquants_id_token(mail, pw)
-            price_date, closes = jquants_latest_closes(idt)
+            price_date, closes = jquants_latest_closes(apikey)
             upd = 0
             for rec in out:
                 sec = rec.get("_sec"); shares = rec.get("_shares")
@@ -309,7 +291,7 @@ def main():
         except Exception as e:
             print(f"  [警告] J-Quants取得に失敗。edinetdb期末値を使用します: {e}")
     else:
-        print("[3.5/4] J-Quants 未設定（JQUANTS_REFRESH_TOKEN もしくは MAILADDRESS+PASSWORD）→ edinetdb期末値を使用")
+        print("[3.5/4] J-Quants 未設定（JQUANTS_API_KEY）→ edinetdb期末値を使用")
     for rec in out:
         rec.pop("_sec", None); rec.pop("_shares", None)
 

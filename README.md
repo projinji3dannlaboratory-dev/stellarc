@@ -83,7 +83,9 @@
    git push -u origin main
    ```
 2. **Settings → Secrets and variables → Actions → New repository secret**
-   - Name: `EDINETDB_API_KEY` / Value: edinetdb.jp のキー（`edb_...`）
+   - Name: `EDINETDB_API_KEY` / Value: edinetdb.jp のキー（`edb_...`）— 業績データ用
+   - Name: `JQUANTS_API_KEY` / Value: J-Quants(JPX) V2 のAPIキー — 時価総額（最新終値）用。
+     未設定でも動作する（その場合は時価総額が edinetdb の決算期末値になる）。
 3. **Settings → Pages → Build and deployment**
    - Source: *Deploy from a branch* / Branch: `main` / フォルダ: `/ (root)`
 4. **Settings → Actions → General → Workflow permissions**
