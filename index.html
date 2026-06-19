@@ -1098,7 +1098,7 @@ function control(q){
   if(/年収|給料|高収入|稼/.test(q)){ w.salary=2.4; }
   if(/若|成長|ベンチャー|勢い/.test(q)){ w.growth=2; }
   if(/安定|長く|堅実|潰れない/.test(q)){ w.margin=1.6; w.tenure=1.6; }
-  if(/大手|大企業|でかい|巨大/.test(q)){ wantBig=true; }
+  if(/時価総額|大手|大企業|でかい|でっか|巨大|大型|大きい|規模が大|規模の大/.test(q)){ wantBig=true; }
   if(/隠れ|知らない|無名|マイナー|穴場|暗黒/.test(q)){ wantDG=true; }
   if(/コミュ|営業|人と話|接客/.test(q)){ indFilter=['卸売業','サービス業','小売業','情報・通信業']; }
   for(const [re,ind] of IND_KEYS) if(re.test(q)){ indFilter=[ind]; break; }
@@ -1106,14 +1106,15 @@ function control(q){
   for(const s of STARS){
     if(indFilter && !indFilter.includes(s.ind)) continue;
     if(wantDG && !s.dg) continue;
+    if(wantBig && !s.mktcap) continue;        // 時価総額検索: 時価総額データ無しは除外
     if(wantHZ && !habitable(s).ok) continue;
     const ra = ratingAvgOf(s);
     let sc = s.mass*(w.mass||0) + (s.tenure||0)*(w.tenure||0)*4 + (s.niche?60:0)*(w.niche?1:0)
            + (s.salary||0)/12*(w.salary||0) + Math.max(s.growth||0,0)*(w.growth||0)*2.5
            + (s.margin||0)*(w.margin||0)*2.5 + (s.papa||0)*(w.papa||0)*0.5
            + (ra!=null?(ra-2.5)*12:0)*(w.rating||0)
-           + (wantBig&&s.mktcap?Math.log10(s.mktcap)*10:0)
-           + (wantDG?0:(1-s.albedo)*14);   // デフォルトでも知名度低めを少し優遇＝発見体験
+           + (wantBig&&s.mktcap?(s.sizeScore||0)*30:0)   // 時価総額を支配的に（規模スコア線形）
+           + ((wantBig||wantDG)?0:(1-s.albedo)*14);   // 規模/発見検索では知名度ボーナスを無効化
     scored.push([sc,s]);
   }
   scored.sort((a,b)=>b[0]-a[0]);
