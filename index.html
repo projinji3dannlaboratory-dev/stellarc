@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>ホワイト企業図鑑 STELLARC｜隠れた優良企業が見つかる企業発見マップ</title>
-<meta name="description" content="全上場企業を宇宙の銀河に見立てて探せる「ホワイト企業図鑑」。星の大きさ＝時価総額、輝き＝優良企業度（売上成長率・営業利益率・働きやすさ・平均年収）。EDINET開示情報をもとに、知名度は低いが優良な“隠れ優良企業”を発見。転職・就活の企業研究に。">
+<title>ホワイト企業発見マップ STELLARC｜隠れた優良企業が見つかる企業発見マップ</title>
+<meta name="description" content="全上場企業を宇宙の銀河に見立てて探せる「ホワイト企業発見マップ」。星の大きさ＝時価総額、輝き＝優良企業度（売上成長率・営業利益率・働きやすさ・平均年収）。EDINET開示情報をもとに、知名度は低いが優良な“隠れ優良企業”を発見。転職・就活の企業研究に。">
 <meta name="keywords" content="ホワイト企業,優良企業,隠れ優良企業,企業研究,転職,就活,企業選び,優良企業ランキング,時価総額,企業発見">
-<meta property="og:title" content="ホワイト企業図鑑 STELLARC｜隠れた優良企業を見つける">
+<meta property="og:title" content="ホワイト企業発見マップ STELLARC｜隠れた優良企業を見つける">
 <meta property="og:description" content="星の大きさは時価総額、輝きは優良企業度。東証33業種の銀河を旅して、知られざる優良企業（暗黒巨星）と、あなたが暮らせる会社を見つけよう。転職・就活の企業研究マップ。">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -209,7 +209,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
 <!-- BOOT -->
 <div id="boot">
   <div class="boot-box">
-    <div class="boot-title">ホワイト企業図鑑</div>
+    <div class="boot-title">ホワイト企業発見マップ</div>
     <div class="boot-sub">STELLARC — 隠れた優良企業が見つかる企業発見マップ</div>
     <div class="boot-line" data-d="0">&gt; 観測機構を起動 .......... <span class="ok">OK</span></div>
     <div class="boot-line" data-d="350">&gt; 銀河座標系を展開 / 東証33業種星雲 .......... <span class="ok">OK</span></div>
@@ -222,7 +222,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
 
 <!-- HUD -->
 <div class="hud" id="topbar">
-  <div id="logo"><span class="jp">ホワイト企業<b>図鑑</b></span><span class="en">STELLARC</span></div>
+  <div id="logo"><span class="jp">ホワイト企業<b>発見</b>マップ</span><span class="en">STELLARC</span></div>
   <div id="demo-badge">DEMO DATA</div>
   <div id="mode-group" role="group" aria-label="観測モード">
     <button class="mode-btn active" data-mode="visible">可視光</button>
@@ -1038,8 +1038,8 @@ $('share-btn').addEventListener('click',async()=>{
   let txt=`◆ 暗黒巨星を観測しました\n${s.name}（${s.ind}）\n優良企業度 ${s.mass}/100・知名度 ${Math.round(s.albedo*100)}%${s.mktcap?'・時価総額 '+fmtCap(s.mktcap):''}`;
   if(!s.dg) txt=`🔭 ${s.name}（${s.ind}）を観測\n優良企業度 ${s.mass}/100${s.mktcap?'・時価総額 '+fmtCap(s.mktcap):''}`;
   if(ship.calibrated){ const h=habitable(s); txt+=`\nHZ判定: ${h.ok?'入植可能 🟢':'圏外'}（手取り月${h.monthly.toFixed(1)}万 vs 必要${h.need.toFixed(1)}万）`; }
-  txt+= USING_REAL ? '\n#ホワイト企業図鑑 #STELLARC #暗黒巨星みつけた（EDINET開示に基づく推計）'
-                   : '\n#ホワイト企業図鑑 #STELLARC #暗黒巨星みつけた（プロトタイプ・架空データ）';
+  txt+= USING_REAL ? '\n#ホワイト企業発見マップ #STELLARC #暗黒巨星みつけた（EDINET開示に基づく推計）'
+                   : '\n#ホワイト企業発見マップ #STELLARC #暗黒巨星みつけた（プロトタイプ・架空データ）';
   try{ if(navigator.share){ await navigator.share({text:txt}); return; } }catch(e){}
   try{ await navigator.clipboard.writeText(txt); say('観測記録をクリップボードに転送しました。Xに貼り付けて発信できます。'); }
   catch(e){ say('シェアテキスト:<br>'+txt.replace(/\n/g,'<br>')); }
