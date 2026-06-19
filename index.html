@@ -14,6 +14,14 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="favicon.svg">
 <meta name="theme-color" content="#04060d">
+<meta property="og:site_name" content="ホワイト企業発見マップ">
+<meta property="og:image" content="https://kigyo-map.projinji3dann-laboratory.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ホワイト企業発見マップ STELLARC｜隠れた優良企業を見つける">
+<meta name="twitter:description" content="星の大きさは時価総額、輝きは優良企業度。東証33業種の銀河から、知られざる優良企業を発見。転職・就活の企業研究に。">
+<meta name="twitter:image" content="https://kigyo-map.projinji3dann-laboratory.com/og-image.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -41,6 +49,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
 .boot-line.on{opacity:1;transform:none}
 .boot-line .ok{color:var(--hz)}
 #boot-skip{margin-top:24px;background:none;border:1px solid var(--line);color:var(--txt-dim);font-family:var(--mono);font-size:11px;padding:8px 18px;letter-spacing:.2em}
+.boot-links{margin-top:22px;font-size:11px;color:var(--txt-dim);letter-spacing:.04em;line-height:1.9}
+.boot-links a{color:var(--amber-dim);text-decoration:none;margin:0 4px}
+.boot-links a:hover{color:var(--amber)}
 
 /* ---------- HUD frame ---------- */
 .hud{position:fixed;z-index:20;pointer-events:none}
@@ -222,6 +233,11 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
     <div class="boot-line" data-d="1050">&gt; 優良企業度スペクトル解析・経済物理エンジン接続 .......... <span class="ok">OK</span></div>
     <div class="boot-line" data-d="1400">&gt; データソース整合性チェック .......... <span class="ok">OK</span></div>
     <button id="boot-skip">タップして出航 ▸</button>
+    <div class="boot-links">運営:
+      <a href="https://projinji3dann-laboratory.com/" target="_blank" rel="noopener">Pro-Jinji Laboratory</a>・
+      <a href="https://salary.projinji3dann-laboratory.com/" target="_blank" rel="noopener">年収ランキング</a>・
+      <a href="https://tedori.projinji3dann-laboratory.com/" target="_blank" rel="noopener">手取り計算</a>
+    </div>
   </div>
 </div>
 
