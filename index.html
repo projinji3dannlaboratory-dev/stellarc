@@ -972,23 +972,32 @@ function renderPanel(s){
   $('panel-body').scrollTop=0;
 }
 
-/* --- 外部観測所: 評価スコア表示 + 各サイトへの観測リンク --- */
+/* --- 外部観測所: 各サイトの該当企業ページへ深リンク（アフィリエイト対応） ---
+   ★スコアの自動転載は行わない（各サイトの規約・著作権保護）。評価は公式ページで確認する導線。
+   アフィリエイト提携後は下の AFFILIATE に各社の遷移URL（{url}が遷移先プレースホルダ）を入れれば
+   全リンクが自動でアフィリエイト経由になります。例: openwork:'https://px.a8.net/...&url={url}' */
+const AFFILIATE = { openwork:null, onecareer:null, jobtalk:null };
+function extUrl(site, name){
+  const n = name.replace(/株式会社|（株）|\(株\)/g,'').trim();
+  const raw = {
+    openwork:  `https://www.openwork.jp/company_list?src_str=${encodeURIComponent(n)}`,
+    onecareer: `https://www.google.com/search?q=${encodeURIComponent(n+' ONE CAREER 社員クチコミ')}`,
+    jobtalk:   `https://www.google.com/search?q=${encodeURIComponent(n+' 転職会議 口コミ')}`,
+  }[site];
+  const tmpl = AFFILIATE[site];
+  return tmpl ? tmpl.replace('{url}', encodeURIComponent(raw)) : raw;
+}
 function renderExt(s){
-  const q = encodeURIComponent(s.name);
-  const links = [
-    ['OpenWork',  s.ow, `https://www.openwork.jp/company_list?src_str=${q}`],
-    ['ONE CAREER',s.oc, `https://www.google.com/search?q=${encodeURIComponent('site:onecareer.jp '+s.name)}`],
-    ['転職会議',   s.jt, `https://www.google.com/search?q=${encodeURIComponent('site:jobtalk.jp '+s.name)}`]
-  ];
+  const sites = [['OpenWork','openwork',s.ow],['ONE CAREER','onecareer',s.oc],['転職会議','jobtalk',s.jt]];
   const ra = ratingAvgOf(s);
   $('p-ext').innerHTML =
     (ra!=null
       ? `<div class="kv" style="margin-bottom:10px"><div class="k">外部観測 総合評価（取込済スコアの平均）</div><div class="v">★ ${ra.toFixed(1)}<small> / 5.0 — 優良企業度に反映済</small></div></div>`
-      : `<div class="ext-note" style="margin-bottom:8px">外部評価スコア未取込。ratings.csv を取り込むと優良企業度（働きやすさ30pt）に反映されます。</div>`)
-    + links.map(([nm,v,url])=>
-      `<div class="route"><span class="r-type">${nm}</span><span class="r-name">${v!=null?'★ '+Number(v).toFixed(1)+' <small style="color:var(--txt-dim)">/ 5.0</small>':'<small style="color:var(--txt-dim)">スコア未取込</small>'}</span>
-       <a class="r-go" style="text-decoration:none" href="${url}" target="_blank" rel="noopener">開く ↗</a></div>`).join('')
-    + `<div class="ext-note" style="margin-top:10px">※ 外部評価は各サイトの利用規約に従い、リンク先での確認、または規約に沿って取得した取込データのみを表示します。${USING_REAL?'':'（デモ表示中のスコアは架空値です）'}</div>`;
+      : `<div class="ext-note" style="margin-bottom:8px">各社の口コミ評価は下のボタンから公式ページで確認できます。</div>`)
+    + sites.map(([nm,key,v])=>
+      `<div class="route"><span class="r-type">${nm}</span><span class="r-name">${v!=null?'★ '+Number(v).toFixed(1)+' <small style="color:var(--txt-dim)">/ 5.0</small>':'<small style="color:var(--txt-dim)">公式ページで確認</small>'}</span>
+       <a class="r-go" style="text-decoration:none;white-space:nowrap" href="${extUrl(key,s.name)}" target="_blank" rel="noopener noreferrer sponsored">★ 評価を見る ↗</a></div>`).join('')
+    + `<div class="ext-note" style="margin-top:10px">※ 各サイトの口コミ・評価は提供元（OpenWork／ONE CAREER／転職会議）に帰属します。本サイトはスコアの自動転載を行わず、公式ページへのリンクのみを提供します。${USING_REAL?'':'（デモ表示中のスコアは架空値です）'}</div>`;
 }
 
 /* --- 降下シミュレーション --- */
