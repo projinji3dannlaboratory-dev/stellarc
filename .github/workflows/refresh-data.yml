@@ -1,9 +1,10 @@
-# STELLARC データ月次更新バッチ
+# STELLARC データ週次更新バッチ
 # edinetdb.jp から最新データを取得して stellarc_data.js を再生成し、
 # 変更があればコミット&push する。GitHub Pages は main/root から配信され、
 # push を検知して自動で再デプロイされる（ビルド手順は不要）。
 #
-# Schedule: 毎月1日 00:00 UTC（= 09:00 JST）。手動実行も可。
+# Schedule: 毎週月曜 00:00 UTC（= 09:00 JST）。手動実行も可。
+# （時価総額を週次で更新。1回あたり約30リクエストで無料枠100/日に十分収まる）
 #
 # 必要な GitHub Secret:
 #   EDINETDB_API_KEY  — edinetdb.jp APIキー（Settings → Secrets and variables → Actions）
@@ -11,7 +12,7 @@ name: Refresh STELLARC Data
 
 on:
   schedule:
-    - cron: "0 0 1 * *"   # 毎月1日 00:00 UTC == 09:00 JST
+    - cron: "0 0 * * 1"   # 毎週月曜 00:00 UTC == 月曜 09:00 JST
   workflow_dispatch:       # Actionsタブから手動実行も可能
 
 permissions:

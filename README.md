@@ -70,9 +70,9 @@
 静的ファイルのみなので、Netlify / Cloudflare Pages / GitHub Pages 等にフォルダごとアップロードするだけです。
 `stellarc_data.js` は約1MBになるため、gzip/brotli配信が有効なホスティングを推奨します。
 
-## 月次自動更新（GitHub Actions + Pages）
+## 週次自動更新（GitHub Actions + Pages）
 
-`.github/workflows/refresh-data.yml` が **毎月1日 09:00 JST** に edinetdb.jp から最新データを取得し、
+`.github/workflows/refresh-data.yml` が **毎週月曜 09:00 JST** に edinetdb.jp から最新データを取得し、
 `stellarc_data.js` を再生成してコミットします。GitHub Pages は main/root から配信され、push を検知して
 自動再デプロイされるため、ビルド設定は不要です。手動実行は Actions タブの「Run workflow」から。
 
