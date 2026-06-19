@@ -35,6 +35,7 @@ jobs:
       - name: Fetch latest data (edinetdb 業績 + J-Quants 時価総額)
         env:
           EDINETDB_API_KEY: ${{ secrets.EDINETDB_API_KEY }}
+          JQUANTS_REFRESH_TOKEN: ${{ secrets.JQUANTS_REFRESH_TOKEN }}
           JQUANTS_MAILADDRESS: ${{ secrets.JQUANTS_MAILADDRESS }}
           JQUANTS_PASSWORD: ${{ secrets.JQUANTS_PASSWORD }}
           PYTHONIOENCODING: "utf-8"

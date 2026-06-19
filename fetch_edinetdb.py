@@ -171,15 +171,19 @@ def load_ratings():
 # ---- J-Quants（JPX公式）: 最新終値で時価総額を再計算するための株価取得 ----
 JQ_BASE = "https://api.jquants.com/v1"
 
+def jquants_idtoken_from_refresh(refresh_token):
+    """リフレッシュトークン（J-Quantsの実質APIキー・有効1週間）→ IDトークン。"""
+    r = requests.post(f"{JQ_BASE}/token/auth_refresh",
+                      params={"refreshtoken": refresh_token}, timeout=60)
+    r.raise_for_status()
+    return r.json()["idToken"]
+
 def jquants_id_token(mail, pw):
+    """メール+パスワード → リフレッシュトークン → IDトークン（毎回新規発行＝無人自動化向き）。"""
     r = requests.post(f"{JQ_BASE}/token/auth_user",
                       json={"mailaddress": mail, "password": pw}, timeout=60)
     r.raise_for_status()
-    rt = r.json()["refreshToken"]
-    r2 = requests.post(f"{JQ_BASE}/token/auth_refresh",
-                       params={"refreshtoken": rt}, timeout=60)
-    r2.raise_for_status()
-    return r2.json()["idToken"]
+    return jquants_idtoken_from_refresh(r.json()["refreshToken"])
 
 def _jq_daily(headers, date):
     out, pk = [], None
@@ -285,10 +289,12 @@ def main():
     price_date = None
     mail = os.environ.get("JQUANTS_MAILADDRESS", "").strip()
     pw = os.environ.get("JQUANTS_PASSWORD", "").strip()
-    if mail and pw:
-        print("[3.5/4] J-Quants から最新終値を取得し時価総額を再計算")
+    rtoken = os.environ.get("JQUANTS_REFRESH_TOKEN", "").strip()
+    if rtoken or (mail and pw):
+        how = "リフレッシュトークン" if rtoken else "メール+パスワード"
+        print(f"[3.5/4] J-Quants（{how}）から最新終値を取得し時価総額を再計算")
         try:
-            idt = jquants_id_token(mail, pw)
+            idt = jquants_idtoken_from_refresh(rtoken) if rtoken else jquants_id_token(mail, pw)
             price_date, closes = jquants_latest_closes(idt)
             upd = 0
             for rec in out:
@@ -303,7 +309,7 @@ def main():
         except Exception as e:
             print(f"  [警告] J-Quants取得に失敗。edinetdb期末値を使用します: {e}")
     else:
-        print("[3.5/4] J-Quants 未設定（JQUANTS_MAILADDRESS/PASSWORD）→ edinetdb期末値を使用")
+        print("[3.5/4] J-Quants 未設定（JQUANTS_REFRESH_TOKEN もしくは MAILADDRESS+PASSWORD）→ edinetdb期末値を使用")
     for rec in out:
         rec.pop("_sec", None); rec.pop("_shares", None)
 
