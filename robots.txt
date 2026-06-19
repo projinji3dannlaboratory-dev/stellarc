@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kigyo-map.projinji3dann-laboratory.com/sitemap.xml
