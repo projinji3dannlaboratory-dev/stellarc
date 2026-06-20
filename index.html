@@ -76,6 +76,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-
 #spin-btn{background:rgba(7,12,22,.7);border:1px solid var(--line);color:var(--txt-dim);
   font-family:var(--mono);font-size:11px;padding:8px 12px;border-radius:3px;letter-spacing:.1em}
 #spin-btn.on{color:var(--amber);border-color:var(--amber-dim);background:rgba(255,180,84,.12)}
+.m-short{display:none}
+#spin-btn .b-ico,#ship-btn .b-ico{margin-right:5px}
 
 #statusbar{left:16px;bottom:calc(86px + env(safe-area-inset-bottom));font-family:var(--mono);font-size:11px;
   color:var(--txt-dim);line-height:1.85;letter-spacing:.06em;text-shadow:0 1px 3px #000}
@@ -209,10 +211,14 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
   #panel.open{transform:none}
   #statusbar{display:none}
   #legend{bottom:calc(84px + env(safe-area-inset-bottom));font-size:9px}
-  #logo .jp{font-size:14px;letter-spacing:.02em} #logo .en{display:none}
-  .mode-btn{padding:8px 9px;font-size:10px}
-  #ship-btn{font-size:11px;padding:7px 9px}
-  #spin-btn{font-size:10px;padding:7px 8px;letter-spacing:.04em}
+  #topbar{gap:6px;padding:8px 8px}
+  #demo-badge{display:none}
+  #logo .jp{font-size:12px;letter-spacing:.01em} #logo .en{display:none}
+  .mode-btn{padding:7px 7px;font-size:10px;letter-spacing:.02em}
+  .m-full{display:none} .m-short{display:inline}
+  #spin-btn,#ship-btn{font-size:11px;padding:7px 8px}
+  #spin-btn .b-lbl,#ship-btn .b-lbl{display:none}
+  #spin-btn .b-ico,#ship-btn .b-ico{margin-right:0}
   #comm-log{bottom:calc(74px + env(safe-area-inset-bottom))}
 }
 @media (prefers-reduced-motion:reduce){
@@ -249,11 +255,11 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
   <div id="demo-badge">DEMO DATA</div>
   <div id="mode-group" role="group" aria-label="観測モード">
     <button class="mode-btn active" data-mode="visible">可視光</button>
-    <button class="mode-btn" data-mode="sensor">深宇宙センサー</button>
-    <button class="mode-btn" data-mode="hz">HZレンズ</button>
+    <button class="mode-btn" data-mode="sensor"><span class="m-full">深宇宙センサー</span><span class="m-short">センサー</span></button>
+    <button class="mode-btn" data-mode="hz"><span class="m-full">HZレンズ</span><span class="m-short">HZ</span></button>
   </div>
-  <button id="spin-btn" class="on" aria-pressed="true" title="銀河の自動回転を切り替え">⟳ 自転 ON</button>
-  <button id="ship-btn">⨂ 探査船設定</button>
+  <button id="spin-btn" class="on" aria-pressed="true" title="銀河の自動回転を切り替え"><span class="b-ico">⟳</span><span class="b-lbl" id="spin-lbl">自転 ON</span></button>
+  <button id="ship-btn" title="探査船設定"><span class="b-ico">⨂</span><span class="b-lbl">探査船設定</span></button>
 </div>
 
 <div class="hud" id="statusbar">
@@ -883,7 +889,7 @@ $('spin-btn').addEventListener('click',()=>{
   const b=$('spin-btn');
   b.classList.toggle('on', autoRotate);
   b.setAttribute('aria-pressed', autoRotate);
-  b.textContent = autoRotate ? '⟳ 自転 ON' : '⟳ 自転 OFF';
+  $('spin-lbl').textContent = autoRotate ? '自転 ON' : '自転 OFF';
 });
 
 /* --- 探査船設定 --- */
