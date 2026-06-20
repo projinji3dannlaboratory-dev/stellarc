@@ -273,7 +273,7 @@ input[type=range]{width:100%;accent-color:var(--amber);height:22px}
   <button class="comm-btn" id="send-btn">交信</button>
 </div>
 
-<div id="toast" role="status"><span class="t-label">今日の暗黒巨星</span><span id="toast-name"></span><button id="toast-go">観測 ▸</button></div>
+<div id="toast" role="status"><span class="t-label">今日のイチオシ企業</span><span id="toast-name"></span><button id="toast-go">観測 ▸</button></div>
 <div id="tip"></div>
 
 <!-- 軌道投入パネル -->
@@ -849,7 +849,7 @@ function exitBoot(){ boot.classList.add('done');
 $('boot-skip').addEventListener('click',exitBoot);
 setTimeout(exitBoot, 2600);
 
-/* --- 今日の暗黒巨星 --- */
+/* --- 今日のイチオシ企業（暗黒巨星から選出） --- */
 function showDailyDG(){
   if(!DARK_GIANTS.length) return;
   const s = DARK_GIANTS[(new Date().getDate()*7)%DARK_GIANTS.length];
